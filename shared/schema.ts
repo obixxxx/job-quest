@@ -28,6 +28,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   xpLogs: many(xpLogs),
   badges: many(badges),
   dailyQuests: many(dailyQuests),
+  templates: many(templates),
+  playbookActions: many(playbookActions),
+  selectedQuests: many(selectedQuests),
 }));
 
 // Contacts table
@@ -54,6 +57,7 @@ export const contacts = pgTable("contacts", {
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
   user: one(users, { fields: [contacts.userId], references: [users.id] }),
   interactions: many(interactions),
+  playbookActions: many(playbookActions),
 }));
 
 // Interactions table
@@ -188,6 +192,71 @@ export const dailyQuestsRelations = relations(dailyQuests, ({ one }) => ({
   user: one(users, { fields: [dailyQuests.userId], references: [users.id] }),
 }));
 
+// Templates table for outreach/scripts
+export const templates = pgTable("templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'email', 'script', 'follow_up'
+  subject: text("subject"), // for email templates only
+  body: text("body").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const templatesRelations = relations(templates, ({ one }) => ({
+  user: one(users, { fields: [templates.userId], references: [users.id] }),
+}));
+
+// Playbook actions table - tracks actions for each contact
+export const playbookActions = pgTable("playbook_actions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id", { length: 36 }).notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  
+  actionType: text("action_type").notNull(), // 'initial_outreach', 'follow_up_1', etc.
+  actionLabel: text("action_label").notNull(), // human-readable label
+  actionOrder: integer("action_order").notNull(), // 1, 2, 3... for sequencing
+  
+  templateId: varchar("template_id", { length: 36 }).references(() => templates.id),
+  status: text("status").default("pending").notNull(), // 'pending', 'completed', 'skipped'
+  completedAt: timestamp("completed_at"),
+  interactionId: varchar("interaction_id", { length: 36 }).references(() => interactions.id),
+  dueDate: date("due_date"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const playbookActionsRelations = relations(playbookActions, ({ one }) => ({
+  user: one(users, { fields: [playbookActions.userId], references: [users.id] }),
+  contact: one(contacts, { fields: [playbookActions.contactId], references: [contacts.id] }),
+  template: one(templates, { fields: [playbookActions.templateId], references: [templates.id] }),
+  interaction: one(interactions, { fields: [playbookActions.interactionId], references: [interactions.id] }),
+}));
+
+// Selected daily quests table (new flexible structure)
+export const selectedQuests = pgTable("selected_quests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  date: date("date").notNull(),
+  questType: text("quest_type").notNull(), // 'playbook', 'outreach', 'follow_up', 'new_contacts', 'calls'
+  questLabel: text("quest_label").notNull(),
+  xpReward: integer("xp_reward").default(0).notNull(),
+  targetCount: integer("target_count").default(1).notNull(),
+  currentCount: integer("current_count").default(0).notNull(),
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const selectedQuestsRelations = relations(selectedQuests, ({ one }) => ({
+  user: one(users, { fields: [selectedQuests.userId], references: [users.id] }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -241,6 +310,23 @@ export const insertXpLogSchema = createInsertSchema(xpLogs).omit({
   createdAt: true,
 });
 
+export const insertTemplateSchema = createInsertSchema(templates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlaybookActionSchema = createInsertSchema(playbookActions).omit({
+  id: true,
+  completedAt: true,
+  createdAt: true,
+});
+
+export const insertSelectedQuestSchema = createInsertSchema(selectedQuests).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Auth schemas
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -271,3 +357,9 @@ export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
 export type DailyQuest = typeof dailyQuests.$inferSelect;
 export type InsertDailyQuest = z.infer<typeof insertDailyQuestSchema>;
+export type Template = typeof templates.$inferSelect;
+export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+export type PlaybookAction = typeof playbookActions.$inferSelect;
+export type InsertPlaybookAction = z.infer<typeof insertPlaybookActionSchema>;
+export type SelectedQuest = typeof selectedQuests.$inferSelect;
+export type InsertSelectedQuest = z.infer<typeof insertSelectedQuestSchema>;

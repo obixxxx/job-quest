@@ -1,5 +1,6 @@
 import {
   users, contacts, interactions, opportunities, interviews, xpLogs, badges, dailyQuests,
+  templates, playbookActions, selectedQuests,
   type User, type InsertUser,
   type Contact, type InsertContact,
   type Interaction, type InsertInteraction,
@@ -8,9 +9,12 @@ import {
   type XPLog, type InsertXPLog,
   type Badge, type InsertBadge,
   type DailyQuest, type InsertDailyQuest,
+  type Template, type InsertTemplate,
+  type PlaybookAction, type InsertPlaybookAction,
+  type SelectedQuest, type InsertSelectedQuest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, lte, gte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -56,6 +60,27 @@ export interface IStorage {
   // Daily Quests
   getDailyQuest(userId: string, date: string): Promise<DailyQuest | undefined>;
   createOrUpdateDailyQuest(quest: InsertDailyQuest): Promise<DailyQuest>;
+
+  // Templates
+  getTemplates(userId?: string): Promise<Template[]>;
+  getTemplate(id: string): Promise<Template | undefined>;
+  getTemplateByName(name: string): Promise<Template | undefined>;
+  createTemplate(template: InsertTemplate): Promise<Template>;
+
+  // Playbook Actions
+  getPlaybookActions(userId: string, contactId: string): Promise<PlaybookAction[]>;
+  getPendingPlaybookActions(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null })[]>;
+  getNextAction(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null }) | null>;
+  createPlaybookAction(action: InsertPlaybookAction): Promise<PlaybookAction>;
+  updatePlaybookAction(id: string, userId: string, updates: Partial<PlaybookAction>): Promise<PlaybookAction | undefined>;
+  completePlaybookAction(id: string, userId: string, interactionId?: string): Promise<PlaybookAction | undefined>;
+  skipPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined>;
+
+  // Selected Quests
+  getSelectedQuests(userId: string, date: string): Promise<SelectedQuest[]>;
+  createSelectedQuest(quest: InsertSelectedQuest): Promise<SelectedQuest>;
+  updateSelectedQuest(id: string, userId: string, updates: Partial<SelectedQuest>): Promise<SelectedQuest | undefined>;
+  incrementQuestProgress(userId: string, date: string, questType: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -238,6 +263,177 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newQuest;
+  }
+
+  // Templates
+  async getTemplates(userId?: string): Promise<Template[]> {
+    // Get default templates + user's custom templates
+    if (userId) {
+      return db.select().from(templates)
+        .where(or(eq(templates.isDefault, true), eq(templates.userId, userId)))
+        .orderBy(templates.name);
+    }
+    return db.select().from(templates)
+      .where(eq(templates.isDefault, true))
+      .orderBy(templates.name);
+  }
+
+  async getTemplate(id: string): Promise<Template | undefined> {
+    const [template] = await db.select().from(templates).where(eq(templates.id, id));
+    return template || undefined;
+  }
+
+  async getTemplateByName(name: string): Promise<Template | undefined> {
+    const [template] = await db.select().from(templates).where(eq(templates.name, name));
+    return template || undefined;
+  }
+
+  async createTemplate(template: InsertTemplate): Promise<Template> {
+    const [newTemplate] = await db.insert(templates).values(template).returning();
+    return newTemplate;
+  }
+
+  // Playbook Actions
+  async getPlaybookActions(userId: string, contactId: string): Promise<PlaybookAction[]> {
+    return db.select().from(playbookActions)
+      .where(and(eq(playbookActions.userId, userId), eq(playbookActions.contactId, contactId)))
+      .orderBy(asc(playbookActions.actionOrder));
+  }
+
+  async getPendingPlaybookActions(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null })[]> {
+    const results = await db.select({
+      id: playbookActions.id,
+      userId: playbookActions.userId,
+      contactId: playbookActions.contactId,
+      actionType: playbookActions.actionType,
+      actionLabel: playbookActions.actionLabel,
+      actionOrder: playbookActions.actionOrder,
+      templateId: playbookActions.templateId,
+      status: playbookActions.status,
+      completedAt: playbookActions.completedAt,
+      interactionId: playbookActions.interactionId,
+      dueDate: playbookActions.dueDate,
+      createdAt: playbookActions.createdAt,
+      contactName: contacts.name,
+      contactCompany: contacts.company,
+    })
+      .from(playbookActions)
+      .innerJoin(contacts, eq(playbookActions.contactId, contacts.id))
+      .where(and(
+        eq(playbookActions.userId, userId),
+        eq(playbookActions.status, "pending")
+      ))
+      .orderBy(asc(playbookActions.dueDate), asc(playbookActions.actionOrder));
+    
+    return results;
+  }
+
+  async getNextAction(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null }) | null> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Priority: overdue first, then by action order
+    const results = await db.select({
+      id: playbookActions.id,
+      userId: playbookActions.userId,
+      contactId: playbookActions.contactId,
+      actionType: playbookActions.actionType,
+      actionLabel: playbookActions.actionLabel,
+      actionOrder: playbookActions.actionOrder,
+      templateId: playbookActions.templateId,
+      status: playbookActions.status,
+      completedAt: playbookActions.completedAt,
+      interactionId: playbookActions.interactionId,
+      dueDate: playbookActions.dueDate,
+      createdAt: playbookActions.createdAt,
+      contactName: contacts.name,
+      contactCompany: contacts.company,
+      contactEmail: contacts.email,
+    })
+      .from(playbookActions)
+      .innerJoin(contacts, eq(playbookActions.contactId, contacts.id))
+      .where(and(
+        eq(playbookActions.userId, userId),
+        eq(playbookActions.status, "pending")
+      ))
+      .orderBy(
+        sql`CASE WHEN ${playbookActions.dueDate} < ${today} THEN 0 ELSE 1 END`,
+        asc(playbookActions.dueDate),
+        asc(playbookActions.actionOrder)
+      )
+      .limit(1);
+    
+    return results[0] || null;
+  }
+
+  async createPlaybookAction(action: InsertPlaybookAction): Promise<PlaybookAction> {
+    const [newAction] = await db.insert(playbookActions).values(action).returning();
+    return newAction;
+  }
+
+  async updatePlaybookAction(id: string, userId: string, updates: Partial<PlaybookAction>): Promise<PlaybookAction | undefined> {
+    const [action] = await db.update(playbookActions)
+      .set(updates)
+      .where(and(eq(playbookActions.id, id), eq(playbookActions.userId, userId)))
+      .returning();
+    return action || undefined;
+  }
+
+  async completePlaybookAction(id: string, userId: string, interactionId?: string): Promise<PlaybookAction | undefined> {
+    const [action] = await db.update(playbookActions)
+      .set({ 
+        status: "completed", 
+        completedAt: new Date(),
+        interactionId: interactionId || null
+      })
+      .where(and(eq(playbookActions.id, id), eq(playbookActions.userId, userId)))
+      .returning();
+    return action || undefined;
+  }
+
+  async skipPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined> {
+    const [action] = await db.update(playbookActions)
+      .set({ status: "skipped" })
+      .where(and(eq(playbookActions.id, id), eq(playbookActions.userId, userId)))
+      .returning();
+    return action || undefined;
+  }
+
+  // Selected Quests
+  async getSelectedQuests(userId: string, date: string): Promise<SelectedQuest[]> {
+    return db.select().from(selectedQuests)
+      .where(and(eq(selectedQuests.userId, userId), eq(selectedQuests.date, date)));
+  }
+
+  async createSelectedQuest(quest: InsertSelectedQuest): Promise<SelectedQuest> {
+    const [newQuest] = await db.insert(selectedQuests).values(quest).returning();
+    return newQuest;
+  }
+
+  async updateSelectedQuest(id: string, userId: string, updates: Partial<SelectedQuest>): Promise<SelectedQuest | undefined> {
+    const [quest] = await db.update(selectedQuests)
+      .set(updates)
+      .where(and(eq(selectedQuests.id, id), eq(selectedQuests.userId, userId)))
+      .returning();
+    return quest || undefined;
+  }
+
+  async incrementQuestProgress(userId: string, date: string, questType: string): Promise<void> {
+    // Find matching quest and increment progress
+    const quests = await db.select().from(selectedQuests)
+      .where(and(
+        eq(selectedQuests.userId, userId),
+        eq(selectedQuests.date, date),
+        eq(selectedQuests.questType, questType),
+        eq(selectedQuests.isCompleted, false)
+      ));
+    
+    for (const quest of quests) {
+      const newCount = quest.currentCount + 1;
+      const isCompleted = newCount >= quest.targetCount;
+      await db.update(selectedQuests)
+        .set({ currentCount: newCount, isCompleted })
+        .where(eq(selectedQuests.id, quest.id));
+    }
   }
 }
 
