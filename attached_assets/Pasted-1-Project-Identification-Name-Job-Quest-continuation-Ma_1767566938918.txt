@@ -1,0 +1,391 @@
+1. Project Identification
+Name: Job Quest (continuation)
+Main Purpose: Add a "Directive Playbook" system that transforms the app from a passive tracker into an active coach. When I add a contact, the app should tell me exactly what to do next and give me the templates/scripts to do it. The app should push me into action, not wait for me to figure out what to log.
+2. Architecture & Workflow
+User Flow (new additions):
+[Add Contact]
+   → Contact created with "cold" warmth
+   → System auto-generates a "Playbook" for this contact
+   → Playbook = a checklist of actions to take with this contact, in order:
+      1. "Send initial outreach email" (template available)
+      2. "Follow up in 3 days if no response" (template available)
+      3. "Follow up again in 7 days" (template available)
+      4. "Final follow-up at 14 days" (template available)
+      5. "Schedule a call" (no template, just a prompt)
+      6. "During call: build rapport, then pivot to asking about opportunities" (script available)
+      7. "Ask for introduction to others" (script available)
+
+[View Contact]
+   → Shows contact info at top
+   → Shows "NEXT ACTION" prominently (the #1 uncompleted playbook item)
+   → Shows full Playbook checklist below
+   → Each action has: checkbox, action name, template/script link
+   → Clicking template link shows the template text in a modal
+   → User can copy template or use it as reference for writing their own message
+
+[Log Interaction]
+   → When user logs an interaction, system auto-detects which playbook action it satisfies
+   → That action gets checked off
+   → Next action becomes the new priority
+   → If interaction doesn't match any action, user can manually assign or skip
+
+[Dashboard - Next Action Card]
+   → Pulls from ALL contacts' playbooks
+   → Shows the single highest-priority action across all contacts
+   → Priority logic:
+      - Overdue follow-ups first (sorted by days overdue)
+      - Then: contacts with no interactions yet (need initial outreach)
+      - Then: contacts awaiting next playbook step
+   → Card shows: Contact name, Action to take, Days since last contact, "Start" button
+
+[Daily Quests - Enhanced]
+   → Each morning, user picks 3-5 goals from a menu
+   → Menu options:
+      - "Complete 3 playbook actions" (+50 XP)
+      - "Send 5 outreach messages" (+75 XP)
+      - "Follow up with 3 contacts" (+50 XP)
+      - "Add 2 new contacts" (+30 XP)
+      - "Schedule or complete 1 call" (+40 XP)
+   → Track completion throughout day
+   → Award bonus XP when all selected quests completed
+   → Show progress: "2/4 Daily Quests Complete"
+
+[Contacts List]
+   → Each contact card shows a badge with their next action
+   → Badge examples: "📧 Send email" / "📞 Schedule call" / "⏰ Follow up (2 days overdue)"
+   → Can filter contacts by: All, Needs Action, Awaiting Response
+Core Features (this phase):
+
+Templates table with 6 pre-loaded outreach templates (see below for exact content)
+Playbook generation: when contact is added, create their action checklist
+Auto-detection: when logging interaction, match to playbook action and mark complete
+Next Action card on Dashboard pulls from playbook priority queue across all contacts
+Enhanced Daily Quests: pick goals from menu each morning, track completion, bonus XP
+Contact cards show next-action badges
+Template viewer modal (view/copy templates)
+
+3. Database & Authentication
+Database: Use the existing PostgreSQL database from Phase 1 (Replit's DB is fine for now)
+New tables to add:
+sql-- Templates table (stores reusable message templates and scripts)
+CREATE TABLE IF NOT EXISTS templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL, -- 'email', 'script', 'follow_up'
+  subject TEXT, -- for email templates only
+  body TEXT NOT NULL,
+  is_default BOOLEAN DEFAULT false, -- true = system template, false = user-created
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Playbook actions table (tracks which actions are complete per contact)
+CREATE TABLE IF NOT EXISTS playbook_actions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
+  action_type TEXT NOT NULL, -- 'initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'schedule_call', 'execute_call', 'ask_for_intro'
+  action_label TEXT NOT NULL, -- human-readable label shown in UI
+  action_order INT NOT NULL, -- 1, 2, 3... for sequencing
+  template_id UUID REFERENCES templates(id), -- links to template for this action (can be null)
+  status TEXT DEFAULT 'pending', -- 'pending', 'completed', 'skipped'
+  completed_at TIMESTAMPTZ,
+  interaction_id UUID REFERENCES interactions(id), -- links to the interaction that completed this action
+  due_date DATE, -- when this action should be done by (null = no deadline)
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Update daily_quests table if needed to support the quest picker
+-- Add these columns if they don't exist:
+ALTER TABLE daily_quests ADD COLUMN IF NOT EXISTS quest_type TEXT; -- 'playbook', 'outreach', 'follow_up', 'new_contacts', 'calls'
+ALTER TABLE daily_quests ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 1;
+ALTER TABLE daily_quests ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE daily_quests ADD COLUMN IF NOT EXISTS is_selected BOOLEAN DEFAULT false;
+Seed the 6 default templates (run this after creating the templates table):
+sql-- Template 1: Initial outreach email
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Initial Outreach Email', 'email', 'Quick question about [COMPANY/ROLE]', 
+'Hi [NAME],
+
+I came across your profile and noticed you''re [THEIR ROLE] at [COMPANY]. I''m exploring opportunities in [YOUR FIELD] and had a quick question:
+
+[ONE SPECIFIC QUESTION ABOUT THEIR WORK OR COMPANY]
+
+Would you have 5-10 minutes for a brief call this week?
+
+Thanks,
+[YOUR NAME]', true);
+
+-- Template 2: Follow-up #1 (3 days later, add value)
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Follow-up #1 (Add Value)', 'follow_up', 'Re: Quick question about [COMPANY]',
+'Hi [NAME],
+
+Wanted to follow up on my note from a few days ago. I came across [RELEVANT ARTICLE/INSIGHT] that made me think of [THEIR COMPANY/ROLE] - thought you might find it interesting.
+
+Still happy to chat briefly if you have time this week.
+
+Best,
+[YOUR NAME]', true);
+
+-- Template 3: Follow-up #2 (7 days, more direct)
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Follow-up #2 (Direct)', 'follow_up', 'Following up',
+'Hi [NAME],
+
+Just floating this back to the top of your inbox. I know you''re busy - would a 10-minute call work better than email?
+
+[YOUR NAME]', true);
+
+-- Template 4: Follow-up #3 (14 days, final attempt)
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Follow-up #3 (Final)', 'follow_up', 'One last note',
+'Hi [NAME],
+
+I''ll keep this short - I don''t want to be a pest. If now isn''t a good time, no worries at all. But if you''d be open to a quick chat about [TOPIC], I''m happy to work around your schedule.
+
+Either way, thanks for your time.
+
+[YOUR NAME]', true);
+
+-- Template 5: Call script (how to steer conversation toward opportunities)
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Call Conversation Script', 'script', NULL,
+'HOW TO RUN THE CALL:
+
+1. START WITH CURIOSITY (first 10 min)
+   - Ask about their role, what they''re working on
+   - Ask smart questions that show you researched their company
+   - Let them talk 70% of the time
+   - Take notes on what they mention
+
+2. THE PIVOT (when rapport feels good)
+   Say something like:
+   "I really appreciate you sharing all this. I''ve been thinking... given what you''ve described about [THEIR TEAM/CHALLENGES], I wonder if there might be a way I could add value. Would you be open to exploring that?"
+
+3. HANDLE THEIR RESPONSE:
+   - If YES: "Great - what would be the best next step?"
+   - If HESITANT: "No pressure at all. Would it help if I sent over a short summary of my background?"
+   - If NO: "Totally understand. Is there anyone else you think I should talk to?"
+
+4. ALWAYS END WITH: "Who else should I be talking to?"', true);
+
+-- Template 6: Ask for introduction script
+INSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Ask for Introduction', 'script', NULL,
+'WHEN TO USE: After any good conversation, whether or not they can help you directly.
+
+THE ASK:
+"This has been really helpful. One last question - is there anyone else you think I should talk to? Maybe someone in [TARGET FUNCTION] or at [TYPE OF COMPANY YOU''RE TARGETING]?"
+
+FOLLOW-UP QUESTION:
+"Would you be comfortable making an intro, or would you prefer I reach out directly and mention we spoke?"
+
+WHY THIS WORKS:
+- People like to help when the ask is easy
+- A warm intro converts 10x better than cold outreach
+- Even if they can''t help directly, their network might have your next opportunity', true);
+```
+
+Authentication: Use existing JWT auth from Phase 1 (no changes needed)
+
+**4. Design & Interface**
+
+UI Inspiration: 
+- Todoist (clear task management, obvious next action)
+- Linear (satisfying checkbox animations)
+
+Design Principles:
+
+**Contact Detail Page Layout:**
+```
+┌─────────────────────────────────────────────────┐
+│  ← Back to Contacts                             │
+├─────────────────────────────────────────────────┤
+│  [Avatar] Sarah Chen                            │
+│  Product Manager at Stripe                      │
+│  Warmth: 🟡 Warm    Last contact: 3 days ago    │
+├─────────────────────────────────────────────────┤
+│  ⚡ NEXT ACTION                                 │
+│  ┌─────────────────────────────────────────┐   │
+│  │ Send Follow-up #1 (Add Value)           │   │
+│  │ [View Template]  [Open in Gmail]        │   │
+│  │ [Mark Complete]  [Skip]                 │   │
+│  └─────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────┤
+│  📋 PLAYBOOK                                    │
+│  ✅ Send initial outreach email (completed)    │
+│  🔵 Send Follow-up #1        ← YOU ARE HERE    │
+│  ⚪ Send Follow-up #2                          │
+│  ⚪ Send Follow-up #3                          │
+│  ⚪ Schedule a call                            │
+│  ⚪ During call: pivot to opportunities        │
+│  ⚪ Ask for introductions                      │
+├─────────────────────────────────────────────────┤
+│  📝 INTERACTION HISTORY                         │
+│  • Jan 4: Sent email (initial outreach)        │
+└─────────────────────────────────────────────────┘
+```
+
+**Template Modal:**
+```
+┌─────────────────────────────────────────────────┐
+│  Follow-up #1 (Add Value)              [X Close]│
+├─────────────────────────────────────────────────┤
+│  Subject: Re: Quick question about [COMPANY]    │
+│                                                 │
+│  Hi [NAME],                                     │
+│                                                 │
+│  Wanted to follow up on my note from a few      │
+│  days ago. I came across [RELEVANT ARTICLE]     │
+│  that made me think of [THEIR COMPANY] -        │
+│  thought you might find it interesting.         │
+│                                                 │
+│  Still happy to chat briefly if you have time.  │
+│                                                 │
+│  Best,                                          │
+│  [YOUR NAME]                                    │
+├─────────────────────────────────────────────────┤
+│  [📋 Copy to Clipboard]  [📧 Open in Gmail]    │
+└─────────────────────────────────────────────────┘
+```
+
+**Contact Card Badge (on Contacts list):**
+- Shows small badge with icon + short text
+- Examples: `📧 Send email` / `⏰ Follow up` / `📞 Call` / `🤝 Ask for intro`
+- Overdue items show in red: `⏰ 2 days overdue`
+
+**Daily Quest Picker (morning modal):**
+```
+┌─────────────────────────────────────────────────┐
+│  🎯 Pick Your Daily Quests                      │
+│  Select 3-5 goals for today                     │
+├─────────────────────────────────────────────────┤
+│  [ ] Complete 3 playbook actions      +50 XP   │
+│  [✓] Send 5 outreach messages         +75 XP   │
+│  [✓] Follow up with 3 contacts        +50 XP   │
+│  [ ] Add 2 new contacts               +30 XP   │
+│  [✓] Schedule or complete 1 call      +40 XP   │
+├─────────────────────────────────────────────────┤
+│  Selected: 3/5                [Start Day →]     │
+└─────────────────────────────────────────────────┘
+```
+
+**5. API Integrations**
+
+No external APIs needed for this phase. 
+
+For email templates, generate Gmail compose links when user clicks "Open in Gmail":
+```
+https://mail.google.com/mail/?view=cm&fs=1&to={CONTACT_EMAIL}&su={ENCODED_SUBJECT}&body={ENCODED_BODY}
+6. Implementation Logic
+Playbook Generation (run when contact is created):
+When a new contact is added, automatically create these playbook actions:
+javascriptconst playbookTemplate = [
+  { actionType: 'initial_outreach', label: 'Send initial outreach email', order: 1, templateName: 'Initial Outreach Email', dueDaysFromNow: 0 },
+  { actionType: 'follow_up_1', label: 'Send Follow-up #1 (Add Value)', order: 2, templateName: 'Follow-up #1 (Add Value)', dueDaysFromNow: 3 },
+  { actionType: 'follow_up_2', label: 'Send Follow-up #2 (Direct)', order: 3, templateName: 'Follow-up #2 (Direct)', dueDaysFromNow: 7 },
+  { actionType: 'follow_up_3', label: 'Send Follow-up #3 (Final)', order: 4, templateName: 'Follow-up #3 (Final)', dueDaysFromNow: 14 },
+  { actionType: 'schedule_call', label: 'Schedule a call', order: 5, templateName: null, dueDaysFromNow: null },
+  { actionType: 'execute_call', label: 'During call: pivot to opportunities', order: 6, templateName: 'Call Conversation Script', dueDaysFromNow: null },
+  { actionType: 'ask_for_intro', label: 'Ask for introductions', order: 7, templateName: 'Ask for Introduction', dueDaysFromNow: null },
+];
+
+// For each item, create a playbook_actions row
+// Set due_date = created_at + dueDaysFromNow (if not null)
+// Link template_id by looking up the template by name
+Auto-Detection Logic (when logging interaction):
+javascriptfunction detectPlaybookAction(interaction, pendingActions) {
+  // Sort pending actions by order
+  const sorted = pendingActions.filter(a => a.status === 'pending').sort((a, b) => a.action_order - b.action_order);
+  
+  // Match based on interaction type
+  if (interaction.type === 'email' && interaction.direction === 'outbound') {
+    // Find first pending email-type action
+    const emailActions = sorted.filter(a => 
+      ['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3'].includes(a.action_type)
+    );
+    return emailActions[0] || null;
+  }
+  
+  if (interaction.type === 'call') {
+    // Match to execute_call action
+    return sorted.find(a => a.action_type === 'execute_call') || null;
+  }
+  
+  if (interaction.outcome === 'referral_obtained' || interaction.outcome === 'intro_obtained') {
+    // Match to ask_for_intro action
+    return sorted.find(a => a.action_type === 'ask_for_intro') || null;
+  }
+  
+  // Default: return first pending action (user can reassign)
+  return sorted[0] || null;
+}
+Dashboard Priority Queue:
+sql-- Get the single highest-priority action across all contacts for this user
+SELECT 
+  c.id as contact_id,
+  c.name as contact_name,
+  c.company as contact_company,
+  pa.id as action_id,
+  pa.action_label,
+  pa.action_type,
+  pa.due_date,
+  pa.template_id,
+  CASE 
+    WHEN pa.due_date < CURRENT_DATE THEN pa.due_date - CURRENT_DATE  -- negative = overdue days
+    ELSE 999
+  END as priority_score
+FROM playbook_actions pa
+JOIN contacts c ON pa.contact_id = c.id
+WHERE pa.user_id = $1 
+  AND pa.status = 'pending'
+ORDER BY 
+  priority_score ASC,  -- overdue items first (most negative)
+  pa.action_order ASC  -- then by playbook order
+LIMIT 1;
+Daily Quest Progress Tracking:
+When user completes a playbook action, check if it counts toward any active daily quest:
+
+If quest type is 'playbook', increment current_count
+If quest type is 'outreach' and action was email, increment current_count
+If quest type is 'follow_up' and action was follow_up_*, increment current_count
+When current_count >= target_count, mark quest complete and award bonus XP
+
+7. Files to Create/Modify
+New files:
+
+src/routes/templates.ts - CRUD for templates
+src/routes/playbook.ts - Get playbook for contact, update action status
+src/components/PlaybookPanel.tsx - The checklist UI
+src/components/TemplateModal.tsx - Template viewer with copy button
+src/components/NextActionCard.tsx - The prominent next action display
+src/components/DailyQuestPicker.tsx - Morning quest selection modal
+src/components/ContactBadge.tsx - Next action badge for contact cards
+
+Modify:
+
+Contact creation endpoint - generate playbook after creating contact
+Interaction logging endpoint - auto-detect and complete playbook action
+Dashboard page - replace Next Action card with priority queue version
+Contacts list page - add badges to contact cards
+Daily Quests component - add picker modal and progress tracking
+
+8. Acceptance Criteria
+
+✅ When I add a new contact, 7 playbook actions are auto-created for that contact
+✅ Contact detail page shows the playbook as a visual checklist
+✅ The next pending action is highlighted prominently at the top
+✅ Each action with a template shows a "View Template" link
+✅ Clicking "View Template" opens a modal with the template text
+✅ Modal has "Copy to Clipboard" and "Open in Gmail" buttons (Gmail only for email templates)
+✅ When I log an interaction, the system suggests which playbook action it completes
+✅ I can confirm or change the suggested action before saving
+✅ Completed actions show with a checkmark and strikethrough
+✅ Dashboard Next Action card shows the highest-priority action across ALL my contacts
+✅ Overdue follow-ups appear first in priority
+✅ Each morning, I see a modal to pick 3-5 daily quests
+✅ Quest progress updates throughout the day as I complete actions
+✅ When all selected quests are complete, I get bonus XP with celebration animation
+✅ Contacts list shows a small badge on each card with their next action
