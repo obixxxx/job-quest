@@ -10,8 +10,66 @@ import {
   awardXP,
   checkAndAwardBadges,
 } from "./game-engine";
-import { loginSchema, registerSchema, insertContactSchema, insertInteractionSchema, insertOpportunitySchema, insertInterviewSchema } from "@shared/schema";
+import { loginSchema, registerSchema, insertContactSchema, insertInteractionSchema, insertOpportunitySchema, insertInterviewSchema, insertSelectedQuestSchema } from "@shared/schema";
 import { z } from "zod";
+
+// Playbook template definition
+const PLAYBOOK_TEMPLATE = [
+  { actionType: 'initial_outreach', label: 'Send initial outreach email', order: 1, templateName: 'Initial Outreach Email', dueDaysFromNow: 0 },
+  { actionType: 'follow_up_1', label: 'Send Follow-up #1 (Add Value)', order: 2, templateName: 'Follow-up #1 (Add Value)', dueDaysFromNow: 3 },
+  { actionType: 'follow_up_2', label: 'Send Follow-up #2 (Direct)', order: 3, templateName: 'Follow-up #2 (Direct)', dueDaysFromNow: 7 },
+  { actionType: 'follow_up_3', label: 'Send Follow-up #3 (Final)', order: 4, templateName: 'Follow-up #3 (Final)', dueDaysFromNow: 14 },
+  { actionType: 'schedule_call', label: 'Schedule a call', order: 5, templateName: null, dueDaysFromNow: null },
+  { actionType: 'execute_call', label: 'During call: pivot to opportunities', order: 6, templateName: 'Call Conversation Script', dueDaysFromNow: null },
+  { actionType: 'ask_for_intro', label: 'Ask for introductions', order: 7, templateName: 'Ask for Introduction', dueDaysFromNow: null },
+];
+
+// Generate playbook for a new contact
+async function generatePlaybookForContact(userId: string, contactId: string) {
+  for (const item of PLAYBOOK_TEMPLATE) {
+    let templateId: string | null = null;
+    if (item.templateName) {
+      const template = await storage.getTemplateByName(item.templateName);
+      templateId = template?.id || null;
+    }
+    
+    let dueDate: string | null = null;
+    if (item.dueDaysFromNow !== null) {
+      const date = new Date();
+      date.setDate(date.getDate() + item.dueDaysFromNow);
+      dueDate = date.toISOString().split('T')[0];
+    }
+    
+    await storage.createPlaybookAction({
+      userId,
+      contactId,
+      actionType: item.actionType,
+      actionLabel: item.label,
+      actionOrder: item.order,
+      templateId,
+      status: 'pending',
+      dueDate,
+    });
+  }
+}
+
+// Auto-detect which playbook action an interaction satisfies
+function detectPlaybookActionType(interactionType: string, direction: string, outcome?: string | null): string | null {
+  if (interactionType === 'email' && direction === 'outbound') {
+    // Could match initial_outreach, follow_up_1, follow_up_2, or follow_up_3
+    return 'email_outbound';
+  }
+  
+  if (interactionType === 'call') {
+    return 'execute_call';
+  }
+  
+  if (outcome === 'referral_obtained' || outcome === 'intro_obtained') {
+    return 'ask_for_intro';
+  }
+  
+  return null;
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -119,31 +177,49 @@ export async function registerRoutes(
       const followUps = await storage.getFollowUps(userId);
       const interviews = await storage.getInterviews(userId);
       
-      // Find next action (contact that needs attention)
+      // Get next action from playbook priority queue
+      const playbookNextAction = await storage.getNextAction(userId);
       let nextAction = null;
-      if (allContacts.length > 0) {
-        // Find contact with oldest/no interaction
-        const contactInteractions = new Map<string, Date>();
-        allInteractions.forEach(int => {
-          const existing = contactInteractions.get(int.contactId);
-          if (!existing || new Date(int.createdAt) > existing) {
-            contactInteractions.set(int.contactId, new Date(int.createdAt));
-          }
-        });
-        
-        const sortedContacts = [...allContacts].sort((a, b) => {
-          const aDate = contactInteractions.get(a.id);
-          const bDate = contactInteractions.get(b.id);
-          if (!aDate) return -1;
-          if (!bDate) return 1;
-          return aDate.getTime() - bDate.getTime();
-        });
-        
-        if (sortedContacts.length > 0) {
-          const contact = sortedContacts[0];
-          const lastInteraction = await storage.getLastInteraction(contact.id);
-          nextAction = { contact, lastInteraction };
+      
+      if (playbookNextAction) {
+        // Get template if available
+        let template = null;
+        if (playbookNextAction.templateId) {
+          template = await storage.getTemplate(playbookNextAction.templateId);
         }
+        
+        // Get last interaction for this contact
+        const lastInteraction = await storage.getLastInteraction(playbookNextAction.contactId);
+        
+        // Calculate days since last contact
+        let daysSinceContact = null;
+        if (lastInteraction) {
+          const lastDate = new Date(lastInteraction.createdAt);
+          const today = new Date();
+          daysSinceContact = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+        
+        // Check if overdue
+        let isOverdue = false;
+        let daysOverdue = 0;
+        if (playbookNextAction.dueDate) {
+          const today = new Date().toISOString().split('T')[0];
+          if (playbookNextAction.dueDate < today) {
+            isOverdue = true;
+            const dueDate = new Date(playbookNextAction.dueDate);
+            const todayDate = new Date();
+            daysOverdue = Math.floor((todayDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        }
+        
+        nextAction = {
+          ...playbookNextAction,
+          template,
+          lastInteraction,
+          daysSinceContact,
+          isOverdue,
+          daysOverdue,
+        };
       }
       
       // Build follow-ups with contact info
@@ -165,23 +241,25 @@ export async function registerRoutes(
         ? Math.round((responsesReceived / allInteractions.length) * 100) 
         : 0;
       
-      // Daily quests placeholder
+      // Get selected quests for today
+      const today = new Date().toISOString().split('T')[0];
+      const selectedQuestsToday = await storage.getSelectedQuests(userId, today);
+      const allQuestsComplete = selectedQuestsToday.length > 0 && selectedQuestsToday.every(q => q.isCompleted);
+      
       const dailyQuests = {
-        quests: [
-          { type: "send_message", label: "Send a message", completed: false, xp: 10 },
-          { type: "log_interaction", label: "Log an interaction", completed: allInteractions.some(i => {
-            const today = new Date().toISOString().split('T')[0];
-            return i.createdAt.toISOString().split('T')[0] === today;
-          }), xp: 15 },
-          { type: "add_contact", label: "Add a new contact", completed: allContacts.some(c => {
-            const today = new Date().toISOString().split('T')[0];
-            return c.createdAt.toISOString().split('T')[0] === today;
-          }), xp: 10 },
-        ],
+        quests: selectedQuestsToday.map(q => ({
+          id: q.id,
+          type: q.questType,
+          label: q.questLabel,
+          completed: q.isCompleted,
+          xp: q.xpReward,
+          current: q.currentCount,
+          target: q.targetCount,
+        })),
         bonusXP: 25,
-        allCompleted: false,
+        allCompleted: allQuestsComplete,
+        hasSelectedQuests: selectedQuestsToday.length > 0,
       };
-      dailyQuests.allCompleted = dailyQuests.quests.every(q => q.completed);
       
       res.json({
         nextAction,
@@ -225,6 +303,13 @@ export async function registerRoutes(
       const data = insertContactSchema.parse({ ...req.body, userId });
       
       const contact = await storage.createContact(data);
+      
+      // Generate playbook for the new contact
+      await generatePlaybookForContact(userId, contact.id);
+      
+      // Update quest progress for new_contacts
+      const today = new Date().toISOString().split('T')[0];
+      await storage.incrementQuestProgress(userId, today, 'new_contacts');
       
       // Check for badges
       await checkAndAwardBadges(userId);
@@ -399,6 +484,202 @@ export async function registerRoutes(
       res.json(badges);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch badges" });
+    }
+  });
+
+  // Templates routes
+  app.get("/api/templates", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const templates = await storage.getTemplates(userId);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/templates/:id", authMiddleware, async (req, res) => {
+    try {
+      const template = await storage.getTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
+  // Playbook routes
+  app.get("/api/playbook/next-action", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const nextAction = await storage.getNextAction(userId);
+      
+      if (nextAction && nextAction.templateId) {
+        const template = await storage.getTemplate(nextAction.templateId);
+        return res.json({ ...nextAction, template });
+      }
+      
+      res.json(nextAction);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch next action" });
+    }
+  });
+
+  app.get("/api/playbook/contact/:contactId", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const actions = await storage.getPlaybookActions(userId, req.params.contactId);
+      
+      // Fetch templates for each action
+      const actionsWithTemplates = await Promise.all(
+        actions.map(async (action) => {
+          if (action.templateId) {
+            const template = await storage.getTemplate(action.templateId);
+            return { ...action, template };
+          }
+          return { ...action, template: null };
+        })
+      );
+      
+      res.json(actionsWithTemplates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch playbook" });
+    }
+  });
+
+  app.post("/api/playbook/:actionId/complete", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const { interactionId } = req.body;
+      
+      const action = await storage.completePlaybookAction(req.params.actionId, userId, interactionId);
+      if (!action) {
+        return res.status(404).json({ message: "Action not found" });
+      }
+      
+      // Update quest progress for playbook actions
+      const today = new Date().toISOString().split('T')[0];
+      await storage.incrementQuestProgress(userId, today, 'playbook');
+      
+      // Also check if it was a follow-up action
+      if (['follow_up_1', 'follow_up_2', 'follow_up_3'].includes(action.actionType)) {
+        await storage.incrementQuestProgress(userId, today, 'follow_up');
+      }
+      
+      res.json(action);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to complete action" });
+    }
+  });
+
+  app.post("/api/playbook/:actionId/skip", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const action = await storage.skipPlaybookAction(req.params.actionId, userId);
+      if (!action) {
+        return res.status(404).json({ message: "Action not found" });
+      }
+      res.json(action);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to skip action" });
+    }
+  });
+
+  // Get contact with playbook and interactions
+  app.get("/api/contacts/:id/detail", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const contact = await storage.getContact(req.params.id, userId);
+      if (!contact) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      
+      const playbookActions = await storage.getPlaybookActions(userId, req.params.id);
+      const interactions = await storage.getInteractions(userId, req.params.id);
+      
+      // Fetch templates for playbook actions
+      const actionsWithTemplates = await Promise.all(
+        playbookActions.map(async (action) => {
+          if (action.templateId) {
+            const template = await storage.getTemplate(action.templateId);
+            return { ...action, template };
+          }
+          return { ...action, template: null };
+        })
+      );
+      
+      // Find next action (first pending action)
+      const nextAction = actionsWithTemplates.find(a => a.status === 'pending');
+      
+      res.json({
+        contact,
+        playbookActions: actionsWithTemplates,
+        interactions,
+        nextAction,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contact detail" });
+    }
+  });
+
+  // Selected Quests routes
+  const QUEST_OPTIONS = [
+    { questType: 'playbook', label: 'Complete 3 playbook actions', xpReward: 50, targetCount: 3 },
+    { questType: 'outreach', label: 'Send 5 outreach messages', xpReward: 75, targetCount: 5 },
+    { questType: 'follow_up', label: 'Follow up with 3 contacts', xpReward: 50, targetCount: 3 },
+    { questType: 'new_contacts', label: 'Add 2 new contacts', xpReward: 30, targetCount: 2 },
+    { questType: 'calls', label: 'Schedule or complete 1 call', xpReward: 40, targetCount: 1 },
+  ];
+
+  app.get("/api/quests/options", authMiddleware, async (req, res) => {
+    res.json(QUEST_OPTIONS);
+  });
+
+  app.get("/api/quests/today", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const today = new Date().toISOString().split('T')[0];
+      const quests = await storage.getSelectedQuests(userId, today);
+      
+      // Check if all quests are complete for bonus
+      const allComplete = quests.length > 0 && quests.every(q => q.isCompleted);
+      
+      res.json({ quests, allComplete, bonusXP: allComplete ? 25 : 0 });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch today's quests" });
+    }
+  });
+
+  app.post("/api/quests/select", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const { selectedQuests } = req.body as { selectedQuests: string[] };
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Create selected quests for today
+      const createdQuests = [];
+      for (const questType of selectedQuests) {
+        const option = QUEST_OPTIONS.find(q => q.questType === questType);
+        if (option) {
+          const quest = await storage.createSelectedQuest({
+            userId,
+            date: today,
+            questType: option.questType,
+            questLabel: option.label,
+            xpReward: option.xpReward,
+            targetCount: option.targetCount,
+            currentCount: 0,
+            isCompleted: false,
+          });
+          createdQuests.push(quest);
+        }
+      }
+      
+      res.json(createdQuests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to select quests" });
     }
   });
 

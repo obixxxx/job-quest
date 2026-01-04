@@ -277,8 +277,6 @@ export const insertContactSchema = createInsertSchema(contacts).omit({
 
 export const insertInteractionSchema = createInsertSchema(interactions).omit({
   id: true,
-  xpAwarded: true,
-  osAwarded: true,
   createdAt: true,
 });
 
@@ -290,8 +288,6 @@ export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
 
 export const insertInterviewSchema = createInsertSchema(interviews).omit({
   id: true,
-  xpAwarded: true,
-  osAwarded: true,
   createdAt: true,
 });
 

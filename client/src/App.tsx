@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
 import ContactsPage from "@/pages/contacts";
+import ContactDetailPage from "@/pages/contact-detail";
 import FollowUpsPage from "@/pages/follow-ups";
 import OpportunitiesPage from "@/pages/opportunities";
 import AchievementsPage from "@/pages/achievements";
@@ -23,6 +24,7 @@ function AuthenticatedRouter() {
     <Switch>
       <Route path="/" component={DashboardPage} />
       <Route path="/contacts" component={ContactsPage} />
+      <Route path="/contacts/:id" component={ContactDetailPage} />
       <Route path="/follow-ups" component={FollowUpsPage} />
       <Route path="/opportunities" component={OpportunitiesPage} />
       <Route path="/achievements" component={AchievementsPage} />
