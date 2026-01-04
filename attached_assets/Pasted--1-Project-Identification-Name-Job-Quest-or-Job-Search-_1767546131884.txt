@@ -1,0 +1,98 @@
+
+1. Project Identification
+Name: Job Quest (or "Job Search Game")
+Main Purpose: A gamified job search tracker that makes outreach feel like playing a game. Every action (sending emails, making calls, getting referrals) earns points and builds streaks. Designed for someone with ADHD who needs visible momentum and reward feedback to stay motivated. The core insight: even "failed" outreach (didn't get the referral but got a new contact) should feel like a side quest win.
+
+2. Architecture & Workflow
+User Flow:
+[Login] 
+   → [Dashboard]
+        → Shows: ONE prominent "Next Action" card (e.g., "Follow up with Sarah Chen - 2 days overdue")
+        → Shows: Streak counter, XP bar, Opportunity Score ring
+        → Shows: Quick stats (interviews scheduled, active conversations)
+   
+   → [Add Contact] 
+        → Enter: Name, Company, Role, Email, LinkedIn, Source, Tags
+        → Contact added to database with "cold" warmth level
+   
+   → [Log Interaction]
+        → Select contact
+        → Choose type: Email, LinkedIn DM, Call, Coffee chat, Physical letter
+        → Mark outcome: Response received, Referral obtained, Intro obtained, Intel gathered, No response
+        → System awards XP and OS based on action + outcome
+        → If outcome = partial win (intel gathered), show "Side Quest Complete" celebration
+        → System updates contact warmth level (cold → warm → hot)
+        → System suggests next action and follow-up date
+   
+   → [Follow-Up Queue]
+        → List of overdue and upcoming follow-ups
+        → One-click to log next interaction
+   
+   → [Contacts List]
+        → Filterable by warmth level, tags
+        → Each card shows next recommended action
+   
+   → [Log Interview]
+        → MASSIVE XP/OS reward
+        → Celebration animation
+        → Track stage (phone screen, first round, final, etc.)
+
+Core Features (in priority order):
+1. Log interactions and earn XP/OS with visual feedback
+2. Streak tracking with multipliers (3 days = 1.25x, 7 days = 1.5x, 14 days = 2x)
+3. Dashboard showing ONE next action prominently
+4. Follow-up queue with due dates
+5. Contact management with warmth progression
+6. Daily quests (optional goals for bonus XP)
+7. Badges for milestones
+
+3. Database & Authentication
+Database: Yes, required.
+Choice: PostgreSQL with Prisma ORM (the attached spec uses this architecture)
+Tables needed:
+* User (id, email, passwordHash, totalXP, currentLevel, totalOS, currentStreak, bestStreak, lastActiveDate)
+* Contact (id, userId, name, company, role, email, linkedinUrl, warmthLevel, tags, notes)
+* Interaction (id, userId, contactId, type, direction, outcome, xpAwarded, osAwarded, followUpDate, timestamp)
+* Opportunity (id, userId, role, company, status)
+* Interview (id, userId, opportunityId, scheduledDate, stage, source, xpAwarded, osAwarded)
+* XPLog (id, userId, reason, xpAmount, osAmount, createdAt)
+* Badge (id, userId, type, name, earnedAt)
+* DailyQuest (id, userId, date, completed, bonusXP)
+Authentication: Yes, simple JWT-based auth (email + password). No social login needed.
+
+4. Design & Interface
+UI Inspiration:
+Primary: Todoist — Clean task management where the next action is obvious Secondary: Linear — Modern SaaS aesthetic, satisfying interactions Tertiary: Duolingo — Streak visuals, celebration animations, progress feedback
+Design Principles:
+* Dashboard hierarchy: 60% = Next Action card (big, obvious), 20% = upcoming actions queue, 20% = stats/streaks
+* When XP is earned: Number floats up with animation
+* When streak continues: Fire emoji pulses
+* When interview logged: Confetti or celebration animation
+* When "side quest" completed (intel gathered, intro obtained): Special badge/toast that reframes the partial win as a victory
+* Color: Use green for XP gains, gold/orange for OS gains, red for overdue items
+UI Framework: React with Tailwind CSS, Framer Motion for animations, Recharts for progress visualizations
+
+5. API Integrations
+Required:
+* Anthropic Claude API — For AI message drafting and reply parsing (Phase 4 of spec)
+    * API Key: [I will provide when you reach Phase 4]
+Not required for MVP (skip these):
+* OpenAI (Claude is sufficient)
+* Postmark/SendGrid (use Gmail draft links instead)
+* Stripe (no payments)
+Gmail Integration:
+* Instead of sending emails directly, generate a Gmail compose link: https://mail.google.com/mail/?view=cm&fs=1&to=EMAIL&su=SUBJECT&body=BODY
+* User clicks link, Gmail opens with pre-filled draft
+
+Additional Instructions for Replit:
+The attached file 2026-01-03-job-search-gamification-app.md contains the complete implementation spec with exact code blocks for each task. Use those code blocks directly—don't improvise the architecture.
+Work phase by phase:
+* Phase 1: Project scaffolding, database schema, Express server, JWT auth
+* Phase 2: Contact CRUD, interaction logging, follow-up queue
+* Phase 3: XP/OS scoring engine, streaks, daily quests, badges
+* Phase 4: AI integration (stop and ask me for API key)
+* Phase 5: Email system (use Gmail draft links, skip Postmark)
+* Phase 6: Dashboard and frontend components
+* Phase 7: ADHD-friendly UX (animations, micro-task timers)
+* Phase 8: Testing and deployment
+After each phase, tell me what to test and wait for my confirmation before continuing.
