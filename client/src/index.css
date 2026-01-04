@@ -43,9 +43,20 @@
   --chart-3: 280 76% 42%;
   --chart-4: 37 92% 50%;
   --chart-5: 0 84% 42%;
-  --font-sans: Open Sans, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Game colors */
+  --xp-green: 142 76% 36%;
+  --xp-green-light: 142 60% 45%;
+  --os-gold: 37 92% 50%;
+  --os-gold-light: 37 80% 60%;
+  --warmth-cold: 210 60% 50%;
+  --warmth-warm: 37 80% 50%;
+  --warmth-hot: 0 80% 50%;
+  --streak-fire: 25 95% 53%;
+  --side-quest: 280 65% 60%;
   --radius: .5rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
@@ -95,6 +106,17 @@
   --elevate-2: rgba(255,255,255, .09);
   --background: 0 0% 8%;
   --foreground: 0 0% 96%;
+  
+  /* Game colors - dark mode */
+  --xp-green: 142 70% 45%;
+  --xp-green-light: 142 60% 55%;
+  --os-gold: 37 85% 55%;
+  --os-gold-light: 37 75% 65%;
+  --warmth-cold: 210 55% 55%;
+  --warmth-warm: 37 75% 55%;
+  --warmth-hot: 0 75% 55%;
+  --streak-fire: 25 90% 58%;
+  --side-quest: 280 60% 65%;
   --border: 0 0% 18%;
   --card: 0 0% 10%;
   --card-foreground: 0 0% 96%;

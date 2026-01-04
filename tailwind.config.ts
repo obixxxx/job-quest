@@ -81,6 +81,19 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        game: {
+          xp: "hsl(var(--xp-green) / <alpha-value>)",
+          "xp-light": "hsl(var(--xp-green-light) / <alpha-value>)",
+          os: "hsl(var(--os-gold) / <alpha-value>)",
+          "os-light": "hsl(var(--os-gold-light) / <alpha-value>)",
+          "side-quest": "hsl(var(--side-quest) / <alpha-value>)",
+          streak: "hsl(var(--streak-fire) / <alpha-value>)",
+        },
+        warmth: {
+          cold: "hsl(var(--warmth-cold) / <alpha-value>)",
+          warm: "hsl(var(--warmth-warm) / <alpha-value>)",
+          hot: "hsl(var(--warmth-hot) / <alpha-value>)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
@@ -96,10 +109,41 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "float-up": {
+          "0%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "0", transform: "translateY(-50px)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 5px hsl(var(--xp-green) / 0.5)" },
+          "50%": { boxShadow: "0 0 20px hsl(var(--xp-green) / 0.8)" },
+        },
+        "confetti-fall": {
+          "0%": { transform: "translateY(-100vh) rotate(0deg)", opacity: "1" },
+          "100%": { transform: "translateY(100vh) rotate(720deg)", opacity: "0" },
+        },
+        "slide-in-right": {
+          "0%": { transform: "translateX(100%)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        "bounce-in": {
+          "0%": { transform: "scale(0)", opacity: "0" },
+          "50%": { transform: "scale(1.1)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "streak-pulse": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.15)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "float-up": "float-up 1.5s ease-out forwards",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "confetti-fall": "confetti-fall 3s ease-out forwards",
+        "slide-in-right": "slide-in-right 0.4s ease-out",
+        "bounce-in": "bounce-in 0.5s ease-out",
+        "streak-pulse": "streak-pulse 1s ease-in-out",
       },
     },
   },
