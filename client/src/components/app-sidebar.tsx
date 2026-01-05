@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Briefcase, Award, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Briefcase, Award, LogOut, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -6,6 +6,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { XPBar } from "@/components/game/xp-bar";
+import { DailyQuestProgress } from "@/components/daily-quest-progress";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
@@ -21,6 +23,7 @@ const navItems = [
   { title: "Follow-ups", url: "/follow-ups", icon: Calendar },
   { title: "Opportunities", url: "/opportunities", icon: Briefcase },
   { title: "Achievements", url: "/achievements", icon: Award },
+  { title: "Templates", url: "/templates", icon: FileText },
 ];
 
 export function AppSidebar() {
@@ -62,6 +65,13 @@ export function AppSidebar() {
                 );
               })}
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Today</SidebarGroupLabel>
+          <SidebarGroupContent className="px-2">
+            <DailyQuestProgress compact />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

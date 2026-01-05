@@ -66,6 +66,8 @@ export interface IStorage {
   getTemplate(id: string): Promise<Template | undefined>;
   getTemplateByName(name: string): Promise<Template | undefined>;
   createTemplate(template: InsertTemplate): Promise<Template>;
+  updateTemplate(id: string, userId: string, updates: Partial<Template>): Promise<Template | undefined>;
+  deleteTemplate(id: string, userId: string): Promise<boolean>;
 
   // Playbook Actions
   getPlaybookActions(userId: string, contactId: string): Promise<PlaybookAction[]>;
@@ -81,6 +83,8 @@ export interface IStorage {
   createSelectedQuest(quest: InsertSelectedQuest): Promise<SelectedQuest>;
   updateSelectedQuest(id: string, userId: string, updates: Partial<SelectedQuest>): Promise<SelectedQuest | undefined>;
   incrementQuestProgress(userId: string, date: string, questType: string): Promise<void>;
+  clearSelectedQuests(userId: string, date: string): Promise<void>;
+  incrementQuestById(questId: string, userId: string): Promise<SelectedQuest | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -293,6 +297,23 @@ export class DatabaseStorage implements IStorage {
     return newTemplate;
   }
 
+  async updateTemplate(id: string, userId: string, updates: Partial<Template>): Promise<Template | undefined> {
+    const [template] = await db.update(templates)
+      .set(updates)
+      .where(and(eq(templates.id, id), eq(templates.userId, userId)))
+      .returning();
+    return template || undefined;
+  }
+
+  async deleteTemplate(id: string, userId: string): Promise<boolean> {
+    const [template] = await db.select().from(templates).where(eq(templates.id, id));
+    if (!template || template.isDefault) {
+      return false;
+    }
+    await db.delete(templates).where(and(eq(templates.id, id), eq(templates.userId, userId)));
+    return true;
+  }
+
   // Playbook Actions
   async getPlaybookActions(userId: string, contactId: string): Promise<PlaybookAction[]> {
     return db.select().from(playbookActions)
@@ -434,6 +455,30 @@ export class DatabaseStorage implements IStorage {
         .set({ currentCount: newCount, isCompleted })
         .where(eq(selectedQuests.id, quest.id));
     }
+  }
+
+  async clearSelectedQuests(userId: string, date: string): Promise<void> {
+    await db.delete(selectedQuests)
+      .where(and(eq(selectedQuests.userId, userId), eq(selectedQuests.date, date)));
+  }
+
+  async incrementQuestById(questId: string, userId: string): Promise<SelectedQuest | undefined> {
+    const [quest] = await db.select().from(selectedQuests)
+      .where(and(eq(selectedQuests.id, questId), eq(selectedQuests.userId, userId)));
+    
+    if (!quest || quest.isCompleted) {
+      return quest || undefined;
+    }
+    
+    const newCount = quest.currentCount + 1;
+    const isCompleted = newCount >= quest.targetCount;
+    
+    const [updated] = await db.update(selectedQuests)
+      .set({ currentCount: newCount, isCompleted })
+      .where(eq(selectedQuests.id, questId))
+      .returning();
+    
+    return updated || undefined;
   }
 }
 

@@ -17,6 +17,7 @@ import ContactDetailPage from "@/pages/contact-detail";
 import FollowUpsPage from "@/pages/follow-ups";
 import OpportunitiesPage from "@/pages/opportunities";
 import AchievementsPage from "@/pages/achievements";
+import TemplatesPage from "@/pages/templates";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
@@ -28,6 +29,7 @@ function AuthenticatedRouter() {
       <Route path="/follow-ups" component={FollowUpsPage} />
       <Route path="/opportunities" component={OpportunitiesPage} />
       <Route path="/achievements" component={AchievementsPage} />
+      <Route path="/templates" component={TemplatesPage} />
       <Route component={NotFound} />
     </Switch>
   );

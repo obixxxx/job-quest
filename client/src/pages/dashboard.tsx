@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NextActionCard } from "@/components/dashboard/next-action-card";
+import { ExpansionQuestCard } from "@/components/dashboard/expansion-quest-card";
 import { FollowUpQueue } from "@/components/dashboard/follow-up-queue";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { OSRing } from "@/components/game/os-ring";
 import { StreakCounter } from "@/components/game/streak-counter";
-import { DailyQuestCard } from "@/components/game/daily-quest-card";
+import { DailyQuestProgress } from "@/components/daily-quest-progress";
+import { DailyQuestPicker } from "@/components/daily-quest-picker";
 import { InteractionForm } from "@/components/interactions/interaction-form";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { useXPPopup } from "@/components/game/xp-popup";
@@ -38,6 +40,7 @@ interface DashboardData {
     quests: { type: string; label: string; completed: boolean; xp: number }[];
     bonusXP: number;
     allCompleted: boolean;
+    hasSelectedQuests: boolean;
   };
 }
 
@@ -53,10 +56,17 @@ export default function DashboardPage() {
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
   const [isAddingContact, setIsAddingContact] = useState(false);
+  const [showQuestPicker, setShowQuestPicker] = useState(false);
 
   const { data: dashboardData, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
   });
+
+  useEffect(() => {
+    if (dashboardData && !dashboardData.dailyQuests?.hasSelectedQuests) {
+      setShowQuestPicker(true);
+    }
+  }, [dashboardData]);
 
   const handleLogInteraction = (contact: Contact) => {
     setSelectedContact(contact);
@@ -173,7 +183,7 @@ export default function DashboardPage() {
         {/* Left Column - Next Action + Follow-ups */}
         <div className="lg:col-span-2 space-y-6">
           {/* Next Action Card */}
-          {dashboardData?.nextAction ? (
+          {dashboardData?.nextAction && dashboardData.nextAction.contact ? (
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="w-5 h-5 text-game-xp" />
@@ -187,14 +197,7 @@ export default function DashboardPage() {
               />
             </div>
           ) : (
-            <div className="bg-muted/50 rounded-md p-8 text-center">
-              <h3 className="font-semibold mb-2">No pending actions</h3>
-              <p className="text-muted-foreground mb-4">Add a contact to start your outreach</p>
-              <Button onClick={() => setIsContactDialogOpen(true)} data-testid="button-add-first-contact">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Your First Contact
-              </Button>
-            </div>
+            <ExpansionQuestCard onAddContact={() => setIsContactDialogOpen(true)} />
           )}
 
           {/* Follow-up Queue */}
@@ -218,13 +221,7 @@ export default function DashboardPage() {
           />
 
           {/* Daily Quests */}
-          {dashboardData?.dailyQuests && (
-            <DailyQuestCard
-              quests={dashboardData.dailyQuests.quests}
-              bonusXP={dashboardData.dailyQuests.bonusXP}
-              allCompleted={dashboardData.dailyQuests.allCompleted}
-            />
-          )}
+          <DailyQuestProgress />
         </div>
       </div>
 
@@ -258,6 +255,12 @@ export default function DashboardPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Daily Quest Picker Modal */}
+      <DailyQuestPicker
+        open={showQuestPicker}
+        onClose={() => setShowQuestPicker(false)}
+      />
     </div>
   );
 }

@@ -1,0 +1,255 @@
+1. Project Identification
+Name: Job Quest (continuation)
+Main Purpose: Fix the Dashboard crash, build the Daily Quest picker system, add template editing, and handle the "no next action" state gracefully.
+2. Bugs to Fix
+Bug 1: Dashboard crashes when accessing Next Action card
+Location: /home/runner/workspace/client/src/components/dashboard/next-action-card.tsx line 96
+Error: Cannot read properties of undefined (reading 'name') - the component tries to access contact.name when contact is null/undefined.
+Fix: Add null checks. If there's no next action available, show an "Expansion Quest" card instead of crashing.
+typescript// Before rendering contact info, check if nextAction and contact exist
+if (!nextAction || !nextAction.contact) {
+  // Show expansion quest UI instead
+  return <ExpansionQuestCard />;
+}
+```
+
+**Bug 2: Navigation to Dashboard from other pages causes crash**
+
+This is the same root cause - the Dashboard page loads and tries to render the Next Action card before data is ready, or when no next action exists.
+
+Fix: Add loading state and null checks to the Dashboard page's Next Action section.
+
+**3. New Feature: Daily Quest Picker**
+
+**User Flow:**
+```
+[User opens Dashboard in the morning]
+   → If no quests selected for today:
+      → Show "Pick Your Daily Quests" modal automatically
+      → Modal displays 5-7 quest options with XP bonuses
+      → User selects 3-5 quests by tapping/clicking
+      → User clicks "Start My Day" to confirm
+      → Modal closes, selected quests appear in sidebar/dashboard
+   
+   → If quests already selected:
+      → Show quest progress in sidebar
+      → "2/4 Daily Quests Complete"
+      → Each quest shows: name, progress, XP reward
+      → When quest completed: checkmark animation + XP toast
+      → When ALL quests completed: celebration + bonus XP
+
+[User completes actions throughout day]
+   → System automatically tracks progress against selected quests
+   → Examples:
+      - If quest is "Send 5 outreach messages" and user logs an email → increment counter
+      - If quest is "Complete 3 playbook actions" and user marks action complete → increment counter
+   → Progress updates in real-time on Dashboard
+Quest Menu Options:
+javascriptconst QUEST_OPTIONS = [
+  { 
+    id: 'playbook_actions',
+    label: 'Complete 3 playbook actions', 
+    targetCount: 3, 
+    xpBonus: 50,
+    trackingType: 'playbook_complete' // fires when playbook action marked complete
+  },
+  { 
+    id: 'outreach_5',
+    label: 'Send 5 outreach messages', 
+    targetCount: 5, 
+    xpBonus: 75,
+    trackingType: 'interaction_email_outbound' // fires when email interaction logged
+  },
+  { 
+    id: 'follow_ups',
+    label: 'Follow up with 3 contacts', 
+    targetCount: 3, 
+    xpBonus: 50,
+    trackingType: 'interaction_follow_up' // fires when follow-up interaction logged
+  },
+  { 
+    id: 'new_contacts',
+    label: 'Add 2 new contacts', 
+    targetCount: 2, 
+    xpBonus: 30,
+    trackingType: 'contact_created' // fires when contact added
+  },
+  { 
+    id: 'calls',
+    label: 'Schedule or complete 1 call', 
+    targetCount: 1, 
+    xpBonus: 40,
+    trackingType: 'interaction_call' // fires when call interaction logged
+  },
+  {
+    id: 'research',
+    label: 'Research 3 target companies',
+    targetCount: 3,
+    xpBonus: 35,
+    trackingType: 'manual' // user manually marks these complete
+  },
+  {
+    id: 'linkedin',
+    label: 'Engage on LinkedIn (comment/like 5 posts)',
+    targetCount: 5,
+    xpBonus: 25,
+    trackingType: 'manual'
+  }
+];
+```
+
+**UI Components Needed:**
+
+1. **DailyQuestPickerModal** - Full-screen modal shown on Dashboard load if no quests selected today
+   - Header: "🎯 Pick Your Daily Quests"
+   - Subheader: "Select 3-5 goals for today"
+   - List of quest options as clickable cards
+   - Each card shows: checkbox, quest name, XP bonus
+   - Selected count indicator: "Selected: 3/5"
+   - "Start My Day" button (enabled when 3-5 selected)
+
+2. **DailyQuestProgress** - Sidebar component showing today's quests
+   - Header: "Daily Quests" with progress "2/4"
+   - List of selected quests with:
+     - Quest name
+     - Progress bar or counter (e.g., "2/5 messages sent")
+     - XP bonus
+     - Checkmark when complete
+   - "All Complete!" celebration when done
+
+3. **Quest tracking hooks** - Update quest progress when relevant actions happen:
+   - When interaction logged → check if it matches any quest's trackingType
+   - When contact added → increment new_contacts quest
+   - When playbook action completed → increment playbook_actions quest
+
+**Database:**
+
+The `selected_quests` table already exists from the schema update. Use it to store:
+- Which quests the user selected today
+- Current progress count for each
+- Whether each is complete
+
+**4. New Feature: Template Editing**
+
+**User Flow:**
+```
+[User clicks "Templates" in sidebar or settings]
+   → Shows list of all templates (default + custom)
+   → Each template shows: name, type (email/script), preview snippet
+   → "Add New Template" button at top
+   
+[User clicks on a template]
+   → Opens edit modal with:
+     - Name field
+     - Type dropdown (email, script, follow_up)
+     - Subject field (for emails)
+     - Body textarea (large, with placeholder hints)
+     - "Save" and "Cancel" buttons
+   → For default templates: show "This is a default template. Editing will create a copy."
+   
+[User clicks "Add New Template"]
+   → Opens blank edit modal
+   → User fills in fields
+   → Save creates new template with is_default = false
+UI Components:
+
+TemplatesPage - New page accessible from sidebar
+
+List of templates in cards
+Filter by type (All, Email, Script, Follow-up)
+Add button
+
+
+TemplateEditModal - Edit/create modal
+
+Form fields for name, type, subject, body
+Save/Cancel buttons
+Delete button (only for user-created templates, not defaults)
+
+
+
+API Endpoints Needed:
+
+POST /api/templates - Create new template (already exists in routes)
+PUT /api/templates/:id - Update template (needs to be added)
+DELETE /api/templates/:id - Delete template (needs to be added)
+
+5. New Feature: Expansion Quests (No Next Action State)
+When there are no pending playbook actions for any contact, instead of crashing or showing empty, show "Expansion Quests" - suggestions for proactive job search activities.
+Expansion Quest Options:
+javascriptconst EXPANSION_QUESTS = [
+  {
+    icon: '🔍',
+    title: 'Research target companies',
+    description: 'Find 3 companies you admire and identify decision-makers',
+    action: 'Add Contact' // clicking opens add contact flow
+  },
+  {
+    icon: '✉️',
+    title: 'Send a physical letter',
+    description: 'Write and mail a personal letter to a hiring manager (FedEx, signature required)',
+    action: 'View Tips' // shows tips modal
+  },
+  {
+    icon: '🤝',
+    title: 'Mine your network',
+    description: 'Review LinkedIn connections for warm intro opportunities',
+    action: 'Open LinkedIn'
+  },
+  {
+    icon: '📝',
+    title: 'Improve your materials',
+    description: 'Update your resume, LinkedIn headline, or portfolio',
+    action: null // just informational
+  },
+  {
+    icon: '🎯',
+    title: 'Set a new daily record',
+    description: 'Challenge yourself to send more outreach than yesterday',
+    action: 'Add Contact'
+  }
+];
+UI:
+When NextActionCard has no action to show, render an ExpansionQuestCard instead:
+
+Shows one random expansion quest
+"Shuffle" button to see another suggestion
+Action button if applicable
+
+6. Sidebar Update
+Add new navigation items:
+
+"Templates" - links to /templates page
+Keep Daily Quests progress visible in sidebar (if quests selected)
+
+7. Files to Create/Modify
+New files:
+
+client/src/components/daily-quest-picker.tsx - The morning picker modal
+client/src/components/daily-quest-progress.tsx - Sidebar progress display
+client/src/pages/templates.tsx - Template management page
+client/src/components/template-edit-modal.tsx - Edit/create modal
+client/src/components/expansion-quest-card.tsx - Fallback when no next action
+
+Modify:
+
+client/src/components/dashboard/next-action-card.tsx - Add null checks, show expansion quest if no action
+client/src/pages/dashboard.tsx - Show quest picker modal if no quests selected today, add quest progress
+client/src/components/sidebar.tsx - Add Templates link, show quest progress
+server/routes.ts - Add PUT and DELETE for templates, add quest progress tracking hooks
+Interaction logging flow - After logging, check and update quest progress
+
+8. Acceptance Criteria
+
+✅ Dashboard loads without crashing, even when there's no next action
+✅ If no daily quests selected, picker modal appears on Dashboard load
+✅ User can select 3-5 quests and confirm
+✅ Selected quests appear in sidebar with progress tracking
+✅ Quest progress updates automatically when relevant actions completed
+✅ When all quests complete, celebration animation + bonus XP awarded
+✅ Templates page shows all templates (default + custom)
+✅ User can edit existing templates (creates copy if editing default)
+✅ User can create new custom templates
+✅ User can delete custom templates
+✅ When no playbook actions pending, Expansion Quest card appears instead of crash
+✅ Expansion Quest card shows helpful suggestions with action buttons

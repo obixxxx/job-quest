@@ -510,6 +510,72 @@ export async function registerRoutes(
     }
   });
 
+  const templateValidationSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    type: z.enum(["email", "call_script", "follow_up"]),
+    subject: z.string().nullable().optional(),
+    body: z.string().min(1, "Body is required"),
+  });
+
+  app.post("/api/templates", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const validated = templateValidationSchema.parse(req.body);
+      
+      const template = await storage.createTemplate({
+        ...validated,
+        userId,
+        isDefault: false,
+      });
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.put("/api/templates/:id", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const validated = templateValidationSchema.parse(req.body);
+      
+      // Check if template exists and is owned by user (not a default)
+      const existing = await storage.getTemplate(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      if (existing.isDefault) {
+        return res.status(403).json({ message: "Cannot edit default templates" });
+      }
+      if (existing.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to edit this template" });
+      }
+      
+      const template = await storage.updateTemplate(req.params.id, userId, validated);
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/templates/:id", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const success = await storage.deleteTemplate(req.params.id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Template not found or cannot delete default" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
   // Playbook routes
   app.get("/api/playbook/next-action", authMiddleware, async (req, res) => {
     try {
@@ -561,11 +627,11 @@ export async function registerRoutes(
       
       // Update quest progress for playbook actions
       const today = new Date().toISOString().split('T')[0];
-      await storage.incrementQuestProgress(userId, today, 'playbook');
+      await storage.incrementQuestProgress(userId, today, 'playbook_actions');
       
       // Also check if it was a follow-up action
       if (['follow_up_1', 'follow_up_2', 'follow_up_3'].includes(action.actionType)) {
-        await storage.incrementQuestProgress(userId, today, 'follow_up');
+        await storage.incrementQuestProgress(userId, today, 'follow_ups');
       }
       
       res.json(action);
@@ -626,11 +692,13 @@ export async function registerRoutes(
 
   // Selected Quests routes
   const QUEST_OPTIONS = [
-    { questType: 'playbook', label: 'Complete 3 playbook actions', xpReward: 50, targetCount: 3 },
-    { questType: 'outreach', label: 'Send 5 outreach messages', xpReward: 75, targetCount: 5 },
-    { questType: 'follow_up', label: 'Follow up with 3 contacts', xpReward: 50, targetCount: 3 },
+    { questType: 'playbook_actions', label: 'Complete 3 playbook actions', xpReward: 50, targetCount: 3 },
+    { questType: 'outreach_5', label: 'Send 5 outreach messages', xpReward: 75, targetCount: 5 },
+    { questType: 'follow_ups', label: 'Follow up with 3 contacts', xpReward: 50, targetCount: 3 },
     { questType: 'new_contacts', label: 'Add 2 new contacts', xpReward: 30, targetCount: 2 },
     { questType: 'calls', label: 'Schedule or complete 1 call', xpReward: 40, targetCount: 1 },
+    { questType: 'research', label: 'Research 3 target companies', xpReward: 35, targetCount: 3 },
+    { questType: 'linkedin', label: 'Engage on LinkedIn (5 interactions)', xpReward: 25, targetCount: 5 },
   ];
 
   app.get("/api/quests/options", authMiddleware, async (req, res) => {
@@ -655,31 +723,66 @@ export async function registerRoutes(
   app.post("/api/quests/select", authMiddleware, async (req, res) => {
     try {
       const userId = req.userId!;
-      const { selectedQuests } = req.body as { selectedQuests: string[] };
+      const { quests } = req.body as { quests: { questType: string }[] };
       const today = new Date().toISOString().split('T')[0];
       
-      // Create selected quests for today
+      // Validate all quest types exist in server-side options BEFORE making changes
+      const validQuestTypes = new Set(QUEST_OPTIONS.map(q => q.questType));
+      const invalidQuests = quests.filter(q => !validQuestTypes.has(q.questType));
+      if (invalidQuests.length > 0) {
+        return res.status(400).json({ message: "Invalid quest types provided" });
+      }
+      
+      // Validate 3-5 quests selected
+      if (quests.length < 3 || quests.length > 5) {
+        return res.status(400).json({ message: "Please select 3-5 quests" });
+      }
+      
+      // Clear existing quests for today
+      await storage.clearSelectedQuests(userId, today);
+      
+      // Create selected quests using server-side quest definitions (ignoring client-sent xp/targetCount)
       const createdQuests = [];
-      for (const questType of selectedQuests) {
-        const option = QUEST_OPTIONS.find(q => q.questType === questType);
-        if (option) {
-          const quest = await storage.createSelectedQuest({
-            userId,
-            date: today,
-            questType: option.questType,
-            questLabel: option.label,
-            xpReward: option.xpReward,
-            targetCount: option.targetCount,
-            currentCount: 0,
-            isCompleted: false,
-          });
-          createdQuests.push(quest);
-        }
+      for (const questData of quests) {
+        const option = QUEST_OPTIONS.find(q => q.questType === questData.questType)!;
+        const quest = await storage.createSelectedQuest({
+          userId,
+          date: today,
+          questType: option.questType,
+          questLabel: option.label,
+          xpReward: option.xpReward,
+          targetCount: option.targetCount,
+          currentCount: 0,
+          isCompleted: false,
+        });
+        createdQuests.push(quest);
       }
       
       res.json(createdQuests);
     } catch (error) {
+      console.error("Quest select error:", error);
       res.status(500).json({ message: "Failed to select quests" });
+    }
+  });
+
+  app.post("/api/quests/:questId/increment", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const quest = await storage.incrementQuestById(req.params.questId, userId);
+      
+      if (!quest) {
+        return res.status(404).json({ message: "Quest not found" });
+      }
+      
+      // Check if quest was just completed
+      if (quest.isCompleted && quest.currentCount === quest.targetCount) {
+        // Award quest XP
+        await awardXP(userId, quest.xpReward, 0, "quest_completed", { questId: quest.id });
+      }
+      
+      res.json(quest);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to increment quest" });
     }
   });
 
