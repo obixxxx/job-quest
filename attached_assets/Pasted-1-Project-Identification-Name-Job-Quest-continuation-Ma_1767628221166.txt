@@ -1,0 +1,196 @@
+1. Project Identification
+Name: Job Quest (continuation)
+Main Purpose: Migrate the database from Replit's PostgreSQL to an external Neon PostgreSQL database, create deployment configuration files for Render.com, and push all code to GitHub. This allows the app to run independently of Replit.
+2. Architecture & Workflow
+User Flow: No changes to user-facing features.
+Migration Flow:
+[Update Database Connection]
+   → Find database connection file (server/db.ts or similar)
+   → Update to use process.env.DATABASE_URL
+   → Install @neondatabase/serverless package
+
+[Push Schema to Neon]
+   → Run: npm run db:push (or npx drizzle-kit push:pg)
+   → All tables created on Neon: users, contacts, interactions, opportunities, interviews, xp_logs, badges, daily_quests, templates, playbook_actions, selected_quests
+
+[Seed Default Templates]
+   → Check if templates table is empty
+   → If empty, insert the 6 default templates (SQL provided below)
+
+[Create Deployment Files]
+   → Create render.yaml in project root
+   → Create .env.example in project root
+
+[Verify App Works]
+   → Restart application
+   → Verify no database connection errors in logs
+   → Test: register/login, add contact, view templates, dashboard loads
+
+[Push to GitHub]
+   → git init (if needed)
+   → git remote add origin https://github.com/obixxx/job-quest.git
+   → git add .
+   → git commit -m "Migrate to Neon database and add Render deployment config"
+   → git branch -M main
+   → git push -u origin main --force
+Core Features: No changes. This is a migration task only.
+3. Database & Authentication
+Database: Neon PostgreSQL (external)
+Connection string - set this as DATABASE_URL environment variable:
+postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+The database connection code must use process.env.DATABASE_URL. If it's hardcoded, update it.
+If using Drizzle with neon-http, the connection should look like:
+typescriptimport { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+
+const sql = neon(process.env.DATABASE_URL!);
+export const db = drizzle(sql);
+If using node-postgres:
+typescriptimport { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+export const db = drizzle(pool);
+```
+
+Authentication: Existing JWT auth. Set JWT_SECRET environment variable to:
+```
+job-quest-production-secret-2026
+```
+
+**4. Design & Interface**
+
+No UI changes. This is a migration task only.
+
+**5. API Integrations**
+
+GitHub repository for code push:
+```
+https://github.com/obixxx/job-quest.git
+Push all code to this repository after migration is complete.
+6. Additional Instructions
+Install Neon driver:
+bashnpm install @neondatabase/serverless
+Seed templates SQL (run if templates table is empty):
+sqlINSERT INTO templates (name, type, subject, body, is_default) VALUES
+('Initial Outreach Email', 'email', 'Quick question about [COMPANY/ROLE]', 
+'Hi [NAME],
+
+I came across your profile and noticed you''re [THEIR ROLE] at [COMPANY]. I''m exploring opportunities in [YOUR FIELD] and had a quick question:
+
+[ONE SPECIFIC QUESTION ABOUT THEIR WORK OR COMPANY]
+
+Would you have 5-10 minutes for a brief call this week?
+
+Thanks,
+[YOUR NAME]', true),
+
+('Follow-up #1 (Add Value)', 'follow_up', 'Re: Quick question about [COMPANY]',
+'Hi [NAME],
+
+Wanted to follow up on my note from a few days ago. I came across [RELEVANT ARTICLE/INSIGHT] that made me think of [THEIR COMPANY/ROLE] - thought you might find it interesting.
+
+Still happy to chat briefly if you have time this week.
+
+Best,
+[YOUR NAME]', true),
+
+('Follow-up #2 (Direct)', 'follow_up', 'Following up',
+'Hi [NAME],
+
+Just floating this back to the top of your inbox. I know you''re busy - would a 10-minute call work better than email?
+
+[YOUR NAME]', true),
+
+('Follow-up #3 (Final)', 'follow_up', 'One last note',
+'Hi [NAME],
+
+I''ll keep this short - I don''t want to be a pest. If now isn''t a good time, no worries at all. But if you''d be open to a quick chat about [TOPIC], I''m happy to work around your schedule.
+
+Either way, thanks for your time.
+
+[YOUR NAME]', true),
+
+('Call Conversation Script', 'script', NULL,
+'HOW TO RUN THE CALL:
+
+1. START WITH CURIOSITY (first 10 min)
+   - Ask about their role, what they''re working on
+   - Ask smart questions that show you researched their company
+   - Let them talk 70% of the time
+
+2. THE PIVOT (when rapport feels good)
+   "I really appreciate you sharing all this. I''ve been thinking... given what you''ve described about [THEIR TEAM/CHALLENGES], I wonder if there might be a way I could add value. Would you be open to exploring that?"
+
+3. HANDLE THEIR RESPONSE:
+   - If YES: "Great - what would be the best next step?"
+   - If HESITANT: "No pressure. Would it help if I sent over a short summary of my background?"
+   - If NO: "Totally understand. Is there anyone else you think I should talk to?"
+
+4. ALWAYS END WITH: "Who else should I be talking to?"', true),
+
+('Ask for Introduction', 'script', NULL,
+'WHEN TO USE: After any good conversation.
+
+THE ASK:
+"This has been really helpful. One last question - is there anyone else you think I should talk to? Maybe someone in [TARGET FUNCTION] or at [TYPE OF COMPANY]?"
+
+FOLLOW-UP:
+"Would you be comfortable making an intro, or would you prefer I reach out directly and mention we spoke?"', true);
+Create render.yaml in project root:
+yamlservices:
+  - type: web
+    name: job-quest
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production
+```
+
+**Create .env.example in project root:**
+```
+DATABASE_URL=postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+JWT_SECRET=job-quest-production-secret-2026
+NODE_ENV=production
+PORT=3000
+Push to GitHub commands:
+bashgit init
+git remote add origin https://github.com/obixxx/job-quest.git
+git add .
+git commit -m "Migrate to Neon database and add Render deployment config"
+git branch -M main
+git push -u origin main --force
+7. Verification Checklist
+After completing all tasks, verify:
+
+ App connects to Neon database (no connection errors in logs)
+ Can register a new user
+ Can login
+ Can add a contact (playbook auto-generates)
+ Templates page shows all 6 default templates
+ Dashboard loads without crashing
+ render.yaml file exists in project root
+ .env.example file exists in project root
+ npm run build completes without errors
+ Code is pushed to https://github.com/obixxx/job-quest
+
+8. Acceptance Criteria
+
+✅ Database connection uses process.env.DATABASE_URL
+✅ App connects to Neon without errors
+✅ All tables exist on Neon
+✅ Templates table has 6 default templates
+✅ Core flows work: register, login, add contact, view playbook, view templates, dashboard
+✅ render.yaml exists in project root
+✅ .env.example exists in project root
+✅ npm run build completes without errors
+✅ All code pushed to https://github.com/obixxx/job-quest
