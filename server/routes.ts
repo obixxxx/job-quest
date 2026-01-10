@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { pool } from "./db";
 import { storage } from "./storage";
 import { hashPassword, comparePasswords, authMiddleware } from "./auth";
 import {
@@ -81,9 +83,16 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Session middleware
+  // Session middleware with PostgreSQL store
+  const PgSession = connectPgSimple(session);
+
   app.use(
     session({
+      store: new PgSession({
+        pool: pool,
+        tableName: 'session',
+        createTableIfMissing: true,
+      }),
       secret: process.env.SESSION_SECRET || "job-quest-secret-key",
       resave: false,
       saveUninitialized: false,
