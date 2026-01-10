@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Building, Mail, Phone, Linkedin, Calendar, Zap } from "lucide-react";
+import { ArrowLeft, Building, Mail, Phone, Linkedin, Calendar, Zap, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlaybookPanel } from "@/components/playbook/playbook-panel";
 import { TemplateModal } from "@/components/playbook/template-modal";
+import { OutcomeFormModal } from "@/components/outcomes/outcome-form-modal";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -56,6 +57,7 @@ interface ContactDetail {
 export default function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery<ContactDetail>({
     queryKey: ["/api/contacts", id, "detail"],
@@ -143,6 +145,10 @@ export default function ContactDetailPage() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button onClick={() => setIsOutcomeModalOpen(true)} variant="outline">
+                <Trophy className="h-4 w-4 mr-2" />
+                Record Outcome
+              </Button>
               {contact.email && (
                 <Button size="icon" variant="outline" asChild data-testid="button-email-contact">
                   <a href={`mailto:${contact.email}`}>
@@ -273,6 +279,13 @@ export default function ContactDetailPage() {
         contactName={contact.name}
         contactEmail={contact.email || undefined}
         contactCompany={contact.company || undefined}
+      />
+
+      <OutcomeFormModal
+        isOpen={isOutcomeModalOpen}
+        onClose={() => setIsOutcomeModalOpen(false)}
+        contactId={id!}
+        contactName={contact.name}
       />
     </div>
   );
