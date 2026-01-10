@@ -670,10 +670,11 @@ export async function registerRoutes(
       if (!contact) {
         return res.status(404).json({ message: "Contact not found" });
       }
-      
+
       const playbookActions = await storage.getPlaybookActions(userId, req.params.id);
       const interactions = await storage.getInteractions(userId, req.params.id);
-      
+      const outcomes = await storage.getOutcomesByContact(req.params.id);
+
       // Fetch templates for playbook actions
       const actionsWithTemplates = await Promise.all(
         playbookActions.map(async (action) => {
@@ -684,14 +685,15 @@ export async function registerRoutes(
           return { ...action, template: null };
         })
       );
-      
+
       // Find next action (first pending action)
       const nextAction = actionsWithTemplates.find(a => a.status === 'pending');
-      
+
       res.json({
         contact,
         playbookActions: actionsWithTemplates,
         interactions,
+        outcomes,
         nextAction,
       });
     } catch (error) {
@@ -778,20 +780,75 @@ export async function registerRoutes(
     try {
       const userId = req.userId!;
       const quest = await storage.incrementQuestById(req.params.questId, userId);
-      
+
       if (!quest) {
         return res.status(404).json({ message: "Quest not found" });
       }
-      
+
       // Check if quest was just completed
       if (quest.isCompleted && quest.currentCount === quest.targetCount) {
         // Award quest XP
         await awardXP(userId, quest.xpReward, 0, "quest_completed", { questId: quest.id });
       }
-      
+
       res.json(quest);
     } catch (error) {
       res.status(500).json({ message: "Failed to increment quest" });
+    }
+  });
+
+  // Outcomes routes
+  app.post("/api/outcomes", authMiddleware, async (req, res) => {
+    try {
+      const { userId } = req.session;
+      const data = req.body;
+
+      const outcome = await storage.createOutcome({
+        userId: userId!,
+        contactId: data.contactId,
+        type: data.type,
+        description: data.description,
+        revenueAmount: data.revenueAmount || null,
+        revenueType: data.revenueType || null,
+        outcomeDate: data.outcomeDate,
+        sourceType: data.sourceType || null,
+        introducedToContactId: data.introducedToContactId || null,
+      });
+
+      // If this is an introduction, update the introduced contact's source
+      if (data.type === 'introduction_made' && data.introducedToContactId) {
+        await storage.updateContact(data.introducedToContactId, userId!, {
+          source: 'referral',
+          notes: `Referred by ${data.contactName || 'contact'}`,
+        });
+      }
+
+      res.json({ outcome });
+    } catch (error: any) {
+      console.error("Error creating outcome:", error);
+      res.status(500).json({ error: "Failed to create outcome" });
+    }
+  });
+
+  app.get("/api/outcomes", authMiddleware, async (req, res) => {
+    try {
+      const { userId } = req.session;
+      const outcomes = await storage.getAllOutcomes(userId!);
+      res.json({ outcomes });
+    } catch (error: any) {
+      console.error("Error fetching outcomes:", error);
+      res.status(500).json({ error: "Failed to fetch outcomes" });
+    }
+  });
+
+  app.get("/api/outcomes/analytics", authMiddleware, async (req, res) => {
+    try {
+      const { userId } = req.session;
+      const analytics = await storage.getOutcomesAnalytics(userId!);
+      res.json(analytics);
+    } catch (error: any) {
+      console.error("Error fetching outcomes analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 
