@@ -1,6 +1,6 @@
 import {
   users, contacts, interactions, opportunities, interviews, xpLogs, badges, dailyQuests,
-  templates, playbookActions, selectedQuests,
+  templates, playbookActions, selectedQuests, outcomes,
   type User, type InsertUser,
   type Contact, type InsertContact,
   type Interaction, type InsertInteraction,
@@ -12,9 +12,10 @@ import {
   type Template, type InsertTemplate,
   type PlaybookAction, type InsertPlaybookAction,
   type SelectedQuest, type InsertSelectedQuest,
+  type Outcome, type InsertOutcome,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull, isNotNull, or } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -85,6 +86,22 @@ export interface IStorage {
   incrementQuestProgress(userId: string, date: string, questType: string): Promise<void>;
   clearSelectedQuests(userId: string, date: string): Promise<void>;
   incrementQuestById(questId: string, userId: string): Promise<SelectedQuest | undefined>;
+
+  // Outcomes
+  createOutcome(data: {
+    userId: string;
+    contactId: string;
+    type: string;
+    description: string;
+    revenueAmount?: number | null;
+    revenueType?: string | null;
+    outcomeDate: string;
+    sourceType?: string | null;
+    introducedToContactId?: string | null;
+  }): Promise<Outcome>;
+  getOutcomesByContact(contactId: string): Promise<Outcome[]>;
+  getAllOutcomes(userId: string): Promise<any[]>;
+  getOutcomesAnalytics(userId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -465,20 +482,133 @@ export class DatabaseStorage implements IStorage {
   async incrementQuestById(questId: string, userId: string): Promise<SelectedQuest | undefined> {
     const [quest] = await db.select().from(selectedQuests)
       .where(and(eq(selectedQuests.id, questId), eq(selectedQuests.userId, userId)));
-    
+
     if (!quest || quest.isCompleted) {
       return quest || undefined;
     }
-    
+
     const newCount = quest.currentCount + 1;
     const isCompleted = newCount >= quest.targetCount;
-    
+
     const [updated] = await db.update(selectedQuests)
       .set({ currentCount: newCount, isCompleted })
       .where(eq(selectedQuests.id, questId))
       .returning();
-    
+
     return updated || undefined;
+  }
+
+  // Outcomes
+  async createOutcome(data: {
+    userId: string;
+    contactId: string;
+    type: string;
+    description: string;
+    revenueAmount?: number | null;
+    revenueType?: string | null;
+    outcomeDate: string;
+    sourceType?: string | null;
+    introducedToContactId?: string | null;
+  }): Promise<Outcome> {
+    // Get contact's first interaction date for duration calculation
+    const firstInteraction = await db
+      .select({ createdAt: interactions.createdAt })
+      .from(interactions)
+      .where(eq(interactions.contactId, data.contactId))
+      .orderBy(asc(interactions.createdAt))
+      .limit(1);
+
+    // Count interactions with this contact
+    const interactionCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(interactions)
+      .where(eq(interactions.contactId, data.contactId));
+
+    const interactionCount = interactionCountResult[0]?.count || 0;
+
+    // Calculate duration (days from first interaction to outcome)
+    let durationDays: number | null = null;
+    if (firstInteraction.length > 0) {
+      const firstDate = new Date(firstInteraction[0].createdAt);
+      const outcomeDate = new Date(data.outcomeDate);
+      durationDays = Math.floor((outcomeDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    const [outcome] = await db
+      .insert(outcomes)
+      .values({
+        ...data,
+        interactionCount,
+        durationDays,
+      })
+      .returning();
+
+    return outcome;
+  }
+
+  async getOutcomesByContact(contactId: string): Promise<Outcome[]> {
+    return await db
+      .select()
+      .from(outcomes)
+      .where(eq(outcomes.contactId, contactId))
+      .orderBy(desc(outcomes.outcomeDate));
+  }
+
+  async getAllOutcomes(userId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        outcome: outcomes,
+        contact: {
+          id: contacts.id,
+          name: contacts.name,
+          company: contacts.company,
+          role: contacts.role,
+        },
+      })
+      .from(outcomes)
+      .leftJoin(contacts, eq(outcomes.contactId, contacts.id))
+      .where(eq(outcomes.userId, userId))
+      .orderBy(desc(outcomes.outcomeDate));
+
+    return result;
+  }
+
+  async getOutcomesAnalytics(userId: string): Promise<any> {
+    // Total revenue
+    const revenueResult = await db
+      .select({
+        totalRevenue: sql<number>`COALESCE(SUM(revenue_amount), 0)`,
+      })
+      .from(outcomes)
+      .where(eq(outcomes.userId, userId));
+
+    // Revenue by source type
+    const bySource = await db
+      .select({
+        sourceType: outcomes.sourceType,
+        totalRevenue: sql<number>`COALESCE(SUM(revenue_amount), 0)`,
+        count: sql<number>`count(*)`,
+      })
+      .from(outcomes)
+      .where(and(eq(outcomes.userId, userId), isNotNull(outcomes.revenueAmount)))
+      .groupBy(outcomes.sourceType);
+
+    // Revenue by outcome type
+    const byType = await db
+      .select({
+        type: outcomes.type,
+        totalRevenue: sql<number>`COALESCE(SUM(revenue_amount), 0)`,
+        count: sql<number>`count(*)`,
+      })
+      .from(outcomes)
+      .where(and(eq(outcomes.userId, userId), isNotNull(outcomes.revenueAmount)))
+      .groupBy(outcomes.type);
+
+    return {
+      totalRevenue: revenueResult[0]?.totalRevenue || 0,
+      bySource,
+      byType,
+    };
   }
 }
 
