@@ -31,6 +31,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   templates: many(templates),
   playbookActions: many(playbookActions),
   selectedQuests: many(selectedQuests),
+  outcomes: many(outcomes),
 }));
 
 // Contacts table
@@ -58,6 +59,7 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   user: one(users, { fields: [contacts.userId], references: [users.id] }),
   interactions: many(interactions),
   playbookActions: many(playbookActions),
+  outcomes: many(outcomes),
 }));
 
 // Interactions table
@@ -65,9 +67,10 @@ export const interactions = pgTable("interactions", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
   contactId: varchar("contact_id", { length: 36 }).notNull().references(() => contacts.id, { onDelete: "cascade" }),
-  
-  type: text("type").notNull(), // "email", "linkedin_dm", "call", "coffee", "comment", "physical_letter"
+
+  type: text("type").notNull(), // "email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"
   direction: text("direction").default("outbound").notNull(), // "outbound", "inbound"
+  status: text("status").default("completed").notNull(), // "scheduled", "completed", "cancelled"
   messageContent: text("message_content"),
   
   outcome: text("outcome"), // "response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"
@@ -257,6 +260,41 @@ export const selectedQuestsRelations = relations(selectedQuests, ({ one }) => ({
   user: one(users, { fields: [selectedQuests.userId], references: [users.id] }),
 }));
 
+// Outcomes - major milestones in relationships
+export const outcomes = pgTable("outcomes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id", { length: 36 }).notNull().references(() => contacts.id, { onDelete: "cascade" }),
+
+  // Outcome details
+  type: text("type").notNull(), // "job_offer", "client_project", "introduction_made", "referral_obtained", "interview", "dead_end", "other"
+  description: text("description").notNull(),
+
+  // Revenue tracking (optional)
+  revenueAmount: integer("revenue_amount"), // In dollars
+  revenueType: text("revenue_type"), // "salary", "one_time", "monthly_recurring", "yearly_recurring"
+
+  // When & how
+  outcomeDate: date("outcome_date").notNull(),
+  sourceType: text("source_type"), // "cold_outreach", "warm_intro", "referral", "event", "linkedin", "mutual_connection", "text"
+
+  // For introductions: who were you introduced to?
+  introducedToContactId: varchar("introduced_to_contact_id", { length: 36 }).references(() => contacts.id),
+
+  // Auto-calculated metrics
+  interactionCount: integer("interaction_count"), // How many interactions led to this
+  durationDays: integer("duration_days"), // Days from first contact to outcome
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const outcomesRelations = relations(outcomes, ({ one }) => ({
+  user: one(users, { fields: [outcomes.userId], references: [users.id] }),
+  contact: one(contacts, { fields: [outcomes.contactId], references: [contacts.id] }),
+  introducedToContact: one(contacts, { fields: [outcomes.introducedToContactId], references: [contacts.id] }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -323,6 +361,14 @@ export const insertSelectedQuestSchema = createInsertSchema(selectedQuests).omit
   createdAt: true,
 });
 
+export const insertOutcomeSchema = createInsertSchema(outcomes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateOutcomeSchema = insertOutcomeSchema.partial();
+
 // Auth schemas
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -359,3 +405,5 @@ export type PlaybookAction = typeof playbookActions.$inferSelect;
 export type InsertPlaybookAction = z.infer<typeof insertPlaybookActionSchema>;
 export type SelectedQuest = typeof selectedQuests.$inferSelect;
 export type InsertSelectedQuest = z.infer<typeof insertSelectedQuestSchema>;
+export type Outcome = typeof outcomes.$inferSelect;
+export type InsertOutcome = z.infer<typeof insertOutcomeSchema>;
