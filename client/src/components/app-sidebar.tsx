@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Briefcase, Award, LogOut, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Briefcase, Trophy, Award, LogOut, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const navItems = [
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Follow-ups", url: "/follow-ups", icon: Calendar },
   { title: "Opportunities", url: "/opportunities", icon: Briefcase },
+  { title: "Outcomes", url: "/outcomes", icon: Trophy },
   { title: "Achievements", url: "/achievements", icon: Award },
   { title: "Templates", url: "/templates", icon: FileText },
 ];
