@@ -12,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { WarmthIndicator } from "@/components/game/warmth-indicator";
-import type { Contact, Interaction } from "@shared/schema";
+import type { Contact, Interaction, PlaybookAction } from "@shared/schema";
 
 interface ContactCardProps {
   contact: Contact;
   lastInteraction?: Interaction | null;
+  nextAction?: PlaybookAction | null;
   onLogInteraction: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
@@ -48,11 +49,12 @@ function getAvatarColor(name: string): string {
 export function ContactCard({
   contact,
   lastInteraction,
+  nextAction,
   onLogInteraction,
   onEdit,
   onDelete,
 }: ContactCardProps) {
-  const suggestedAction = getSuggestedAction(contact, lastInteraction);
+  const suggestedAction = nextAction?.actionLabel || getSuggestedAction(contact, lastInteraction);
 
   return (
     <Card className="hover-elevate group" data-testid={`contact-card-${contact.id}`}>
@@ -63,7 +65,7 @@ export function ContactCard({
               {getInitials(contact.name)}
             </AvatarFallback>
           </Avatar>
-          
+
           <Link href={`/contacts/${contact.id}`} className="flex-1 min-w-0 cursor-pointer">
             <div className="flex items-center gap-2">
               <h3 className="font-medium truncate group-hover:text-primary transition-colors" data-testid={`text-contact-name-${contact.id}`}>
@@ -72,7 +74,7 @@ export function ContactCard({
               <WarmthIndicator level={contact.warmthLevel as "cold" | "warm" | "hot"} size="sm" />
               <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0" />
             </div>
-            
+
             {(contact.role || contact.company) && (
               <p className="text-sm text-muted-foreground truncate">
                 {contact.role}
@@ -80,13 +82,13 @@ export function ContactCard({
                 {contact.company}
               </p>
             )}
-            
+
             {lastInteraction && (
               <p className="text-xs text-muted-foreground mt-1">
                 Last contact: {formatDistanceToNow(new Date(lastInteraction.createdAt), { addSuffix: true })}
               </p>
             )}
-            
+
             {contact.tags && contact.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {contact.tags.slice(0, 3).map((tag) => (
@@ -97,7 +99,7 @@ export function ContactCard({
               </div>
             )}
           </Link>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" data-testid={`button-contact-menu-${contact.id}`}>
@@ -108,7 +110,7 @@ export function ContactCard({
               <DropdownMenuItem onClick={() => onEdit(contact)}>
                 Edit contact
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => onDelete(contact)}
                 className="text-destructive"
               >
@@ -117,14 +119,14 @@ export function ContactCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
           <Badge variant="outline" className="text-xs font-normal">
             <Clock className="w-3 h-3 mr-1" />
             {suggestedAction}
           </Badge>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             onClick={() => onLogInteraction(contact)}
             data-testid={`button-log-interaction-${contact.id}`}
           >

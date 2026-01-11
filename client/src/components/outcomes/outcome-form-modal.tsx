@@ -37,7 +37,6 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
   const [outcomeDate, setOutcomeDate] = useState(new Date().toISOString().split('T')[0]);
   const [revenueAmount, setRevenueAmount] = useState('');
   const [revenueType, setRevenueType] = useState('one_time');
-  const [sourceType, setSourceType] = useState('cold_outreach');
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
@@ -65,7 +64,6 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
     setOutcomeDate(new Date().toISOString().split('T')[0]);
     setRevenueAmount('');
     setRevenueType('one_time');
-    setSourceType('cold_outreach');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -84,7 +82,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
       outcomeDate,
       revenueAmount: revenueAmount ? parseInt(revenueAmount) : null,
       revenueType: revenueAmount ? revenueType : null,
-      sourceType,
+      sourceType: null, // No longer collecting this in outcome form
     });
   };
 
@@ -171,24 +169,6 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
               )}
             </>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="source">How did you meet?</Label>
-            <Select value={sourceType} onValueChange={setSourceType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                <SelectItem value="warm_intro">Warm Introduction</SelectItem>
-                <SelectItem value="referral">Referral</SelectItem>
-                <SelectItem value="linkedin">LinkedIn</SelectItem>
-                <SelectItem value="event">Event/Conference</SelectItem>
-                <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
-                <SelectItem value="text">Text/SMS</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>

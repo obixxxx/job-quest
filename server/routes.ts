@@ -318,15 +318,20 @@ export async function registerRoutes(
     try {
       const userId = req.userId!;
       const contacts = await storage.getContacts(userId);
-      
-      const contactsWithInteractions = await Promise.all(
+
+      const contactsWithData = await Promise.all(
         contacts.map(async (contact) => {
           const lastInteraction = await storage.getLastInteraction(contact.id);
-          return { contact, lastInteraction };
+
+          // Get next playbook action for this contact
+          const playbookActions = await storage.getPlaybookActions(userId, contact.id);
+          const nextAction = playbookActions.find(a => a.status === 'pending');
+
+          return { contact, lastInteraction, nextAction };
         })
       );
-      
-      res.json(contactsWithInteractions);
+
+      res.json(contactsWithData);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
