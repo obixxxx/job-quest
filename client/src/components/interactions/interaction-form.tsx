@@ -44,6 +44,7 @@ const outcomes = [
 const interactionFormSchema = z.object({
   type: z.enum(["email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"]),
   direction: z.enum(["outbound", "inbound"]),
+  status: z.enum(["completed", "scheduled", "cancelled"]).default("completed"),
   outcome: z.enum(["response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"]).optional(),
   outcomeDetails: z.string().optional(),
   messageContent: z.string().optional(),
@@ -64,6 +65,7 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
     defaultValues: {
       type: "email",
       direction: "outbound",
+      status: "completed",
       outcome: undefined,
       outcomeDetails: "",
       messageContent: "",
@@ -130,6 +132,29 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
                 <SelectContent>
                   <SelectItem value="outbound">I reached out to them</SelectItem>
                   <SelectItem value="inbound">They reached out to me</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="completed">Completed (already happened)</SelectItem>
+                  <SelectItem value="scheduled">Scheduled (future)</SelectItem>
+                  <SelectItem value="cancelled">Cancelled (didn't happen)</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

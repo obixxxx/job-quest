@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PlaybookPanel } from "@/components/playbook/playbook-panel";
 import { TemplateModal } from "@/components/playbook/template-modal";
 import { OutcomeFormModal } from "@/components/outcomes/outcome-form-modal";
+import { OutcomeBadge } from "@/components/outcomes/outcome-badge";
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 interface Template {
   id: string;
@@ -46,12 +47,21 @@ interface ContactDetail {
     id: string;
     type: string;
     direction: string;
+    status: string;
     outcome: string | null;
     createdAt: string;
     xpAwarded: number;
     osAwarded: number;
   }>;
   nextAction: PlaybookAction | null;
+  outcomes?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    outcomeDate: string;
+    revenueAmount: number | null;
+    revenueType: string | null;
+  }>;
 }
 
 export default function ContactDetailPage() {
@@ -87,7 +97,7 @@ export default function ContactDetailPage() {
     );
   }
 
-  const { contact, playbookActions, interactions, nextAction } = data;
+  const { contact, playbookActions, interactions, nextAction, outcomes = [] } = data;
 
   const warmthColors = {
     cold: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -243,9 +253,16 @@ export default function ContactDetailPage() {
                   data-testid={`interaction-${interaction.id}`}
                 >
                   <div>
-                    <p className="text-sm font-medium capitalize">
-                      {interaction.type.replace("_", " ")} ({interaction.direction})
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium capitalize">
+                        {interaction.type.replace("_", " ")} ({interaction.direction})
+                      </p>
+                      {interaction.status !== "completed" && (
+                        <Badge variant={interaction.status === "scheduled" ? "default" : "outline"} className="text-xs">
+                          {interaction.status}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(interaction.createdAt), { addSuffix: true })}
                       {interaction.outcome && ` - ${interaction.outcome.replace("_", " ")}`}
@@ -271,6 +288,33 @@ export default function ContactDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Outcomes Section */}
+      {outcomes && outcomes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Outcomes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {outcomes.map((outcome) => (
+                <div
+                  key={outcome.id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-md"
+                >
+                  <div>
+                    <OutcomeBadge outcome={outcome} />
+                    <p className="text-sm text-muted-foreground mt-1">{outcome.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(outcome.outcomeDate), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <TemplateModal
         template={selectedTemplate}
