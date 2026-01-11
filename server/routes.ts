@@ -91,7 +91,7 @@ export async function registerRoutes(
       store: new PgSession({
         pool: pool,
         tableName: 'session',
-        createTableIfMissing: true,
+        // Table is managed by Drizzle schema, not by connect-pg-simple
       }),
       secret: process.env.SESSION_SECRET || "job-quest-secret-key",
       resave: false,
