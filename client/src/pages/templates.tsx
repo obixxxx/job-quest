@@ -162,6 +162,7 @@ export default function TemplatesPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(template)}
+                        aria-label="Edit template"
                         data-testid={`button-edit-${template.id}`}
                       >
                         <Pencil className="w-4 h-4" />
@@ -171,6 +172,7 @@ export default function TemplatesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteTemplate(template)}
+                          aria-label="Delete template"
                           data-testid={`button-delete-${template.id}`}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />

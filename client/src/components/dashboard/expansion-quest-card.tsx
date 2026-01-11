@@ -97,10 +97,11 @@ export function ExpansionQuestCard({ onAddContact }: ExpansionQuestCardProps) {
             <Target className="w-5 h-5 text-game-xp" />
             Expansion Quest
           </CardTitle>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleShuffle}
+            aria-label="Shuffle quest"
             data-testid="button-shuffle-quest"
           >
             <Shuffle className="w-4 h-4" />

@@ -1,12 +1,9 @@
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, DollarSign, Users, PhoneCall, XCircle } from 'lucide-react';
+import { Briefcase, DollarSign, Users, PhoneCall, XCircle, HelpCircle } from 'lucide-react';
+import type { Outcome } from '@shared/schema';
 
 interface OutcomeBadgeProps {
-  outcome: {
-    type: string;
-    description: string;
-    revenueAmount?: number | null;
-  };
+  outcome: Pick<Outcome, 'type' | 'description' | 'revenueAmount'>;
 }
 
 export function OutcomeBadge({ outcome }: OutcomeBadgeProps) {
@@ -18,14 +15,25 @@ export function OutcomeBadge({ outcome }: OutcomeBadgeProps) {
     referral_obtained: Users,
     dead_end: XCircle,
     other: Briefcase,
-  };
+  } as const;
 
-  const Icon = icons[outcome.type as keyof typeof icons] || Briefcase;
+  const outcomeType = outcome.type as keyof typeof icons;
+  const Icon = icons[outcomeType];
+  const isUnknownType = !Icon;
+
+  if (isUnknownType) {
+    console.warn(`Unknown outcome type encountered: "${outcome.type}". Falling back to default icon.`);
+  }
+
+  const DisplayIcon = Icon || HelpCircle;
 
   return (
     <div className="flex items-center gap-2">
-      <Badge variant="outline" className="flex items-center gap-1">
-        <Icon className="h-3 w-3" />
+      <Badge
+        variant="outline"
+        className={`flex items-center gap-1 ${isUnknownType ? 'border-amber-500 text-amber-600' : ''}`}
+      >
+        <DisplayIcon className="h-3 w-3" />
         {outcome.type.replace('_', ' ')}
       </Badge>
       {outcome.revenueAmount && (

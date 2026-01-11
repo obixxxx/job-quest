@@ -44,7 +44,7 @@ const outcomes = [
 const interactionFormSchema = z.object({
   type: z.enum(["email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"]),
   direction: z.enum(["outbound", "inbound"]),
-  status: z.enum(["completed", "scheduled", "cancelled"]).default("completed"),
+  status: z.enum(["completed", "scheduled", "cancelled"]),
   outcome: z.enum(["response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"]).optional(),
   outcomeDetails: z.string().optional(),
   messageContent: z.string().optional(),
@@ -65,7 +65,6 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
     defaultValues: {
       type: "email",
       direction: "outbound",
-      status: "completed",
       outcome: undefined,
       outcomeDetails: "",
       messageContent: "",
@@ -73,6 +72,7 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
   });
 
   const selectedOutcome = form.watch("outcome");
+  const selectedStatus = form.watch("status");
   const outcomeData = outcomes.find((o) => o.value === selectedOutcome);
 
   return (
@@ -145,10 +145,10 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-status">
-                    <SelectValue />
+                    <SelectValue placeholder="Select status..." />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -247,7 +247,7 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
           <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-interaction">
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending || !selectedOutcome} data-testid="button-save-interaction">
+          <Button type="submit" disabled={isPending || !selectedOutcome || !selectedStatus} data-testid="button-save-interaction">
             <Send className="w-4 h-4 mr-2" />
             {isPending ? "Logging..." : "Log Interaction"}
           </Button>

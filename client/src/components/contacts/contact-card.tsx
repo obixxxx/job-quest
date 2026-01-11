@@ -102,7 +102,12 @@ export function ContactCard({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-contact-menu-${contact.id}`}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Contact menu"
+                data-testid={`button-contact-menu-${contact.id}`}
+              >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>

@@ -11,6 +11,7 @@ import { OutcomeFormModal } from "@/components/outcomes/outcome-form-modal";
 import { OutcomeBadge } from "@/components/outcomes/outcome-badge";
 import { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
+import type { Outcome } from "@shared/schema";
 
 interface Template {
   id: string;
@@ -47,21 +48,14 @@ interface ContactDetail {
     id: string;
     type: string;
     direction: string;
-    status: string;
+    status?: string;
     outcome: string | null;
     createdAt: string;
     xpAwarded: number;
     osAwarded: number;
   }>;
   nextAction: PlaybookAction | null;
-  outcomes?: Array<{
-    id: string;
-    type: string;
-    description: string;
-    outcomeDate: string;
-    revenueAmount: number | null;
-    revenueType: string | null;
-  }>;
+  outcomes?: Outcome[];
 }
 
 export default function ContactDetailPage() {
@@ -161,21 +155,21 @@ export default function ContactDetailPage() {
               </Button>
               {contact.email && (
                 <Button size="icon" variant="outline" asChild data-testid="button-email-contact">
-                  <a href={`mailto:${contact.email}`}>
+                  <a href={`mailto:${contact.email}`} aria-label="Send email">
                     <Mail className="w-4 h-4" />
                   </a>
                 </Button>
               )}
               {contact.phoneNumber && (
                 <Button size="icon" variant="outline" asChild data-testid="button-call-contact">
-                  <a href={`tel:${contact.phoneNumber}`}>
+                  <a href={`tel:${contact.phoneNumber}`} aria-label="Call contact">
                     <Phone className="w-4 h-4" />
                   </a>
                 </Button>
               )}
               {contact.linkedinUrl && (
                 <Button size="icon" variant="outline" asChild data-testid="button-linkedin-contact">
-                  <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="View LinkedIn profile">
                     <Linkedin className="w-4 h-4" />
                   </a>
                 </Button>
@@ -257,7 +251,7 @@ export default function ContactDetailPage() {
                       <p className="text-sm font-medium capitalize">
                         {interaction.type.replace("_", " ")} ({interaction.direction})
                       </p>
-                      {interaction.status !== "completed" && (
+                      {interaction.status && interaction.status !== "completed" && (
                         <Badge variant={interaction.status === "scheduled" ? "default" : "outline"} className="text-xs">
                           {interaction.status}
                         </Badge>

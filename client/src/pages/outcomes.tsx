@@ -4,9 +4,24 @@ import { Badge } from '@/components/ui/badge';
 import { apiRequest } from '@/lib/queryClient';
 import { format } from 'date-fns';
 import { DollarSign, Briefcase, Users } from 'lucide-react';
+import type { Outcome } from '@shared/schema';
+
+interface OutcomeWithContact {
+  outcome: Outcome;
+  contact: {
+    id: string;
+    name: string;
+    company: string | null;
+    role: string | null;
+  };
+}
+
+interface OutcomesResponse {
+  outcomes: OutcomeWithContact[];
+}
 
 export default function Outcomes() {
-  const { data: outcomesData, isLoading: outcomesLoading } = useQuery({
+  const { data: outcomesData, isLoading: outcomesLoading } = useQuery<OutcomesResponse>({
     queryKey: ['/api/outcomes'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/outcomes');
@@ -29,8 +44,8 @@ export default function Outcomes() {
   const outcomes = outcomesData?.outcomes || [];
 
   // Calculate summary stats
-  const jobOffers = outcomes.filter((o: any) => o.outcome.type === 'job_offer').length;
-  const clientProjects = outcomes.filter((o: any) => o.outcome.type === 'client_project').length;
+  const jobOffers = outcomes.filter((o) => o.outcome.type === 'job_offer').length;
+  const clientProjects = outcomes.filter((o) => o.outcome.type === 'client_project').length;
   const totalRevenue = analytics?.totalRevenue || 0;
 
   return (
@@ -83,7 +98,7 @@ export default function Outcomes() {
             <p className="text-muted-foreground">No outcomes recorded yet.</p>
           ) : (
             <div className="space-y-4">
-              {outcomes.map((item: any) => {
+              {outcomes.map((item) => {
                 const outcome = item.outcome;
                 const contact = item.contact;
 

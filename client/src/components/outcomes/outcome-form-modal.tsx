@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import type { InsertOutcome } from '@shared/schema';
 
 interface OutcomeFormModalProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
   const [revenueType, setRevenueType] = useState('one_time');
 
   const createMutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data: InsertOutcome) =>
       apiRequest('POST', '/api/outcomes', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes'] });
@@ -96,7 +97,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="type">Outcome Type</Label>
+            <Label>Outcome Type</Label>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger>
                 <SelectValue />
