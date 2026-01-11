@@ -104,17 +104,6 @@ export async function registerRoutes(
     })
   );
 
-  // DIAGNOSTIC: Log session state after session middleware
-  app.use((req, res, next) => {
-    console.log('[SESSION LAYER]', req.method, req.path, {
-      hasSession: !!req.session,
-      sessionId: req.sessionID,
-      userId: req.session?.userId,
-      cookie: req.session?.cookie,
-    });
-    next();
-  });
-
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -136,7 +125,7 @@ export async function registerRoutes(
       // Explicitly save session before sending response
       req.session.save((err) => {
         if (err) {
-          console.error('[REGISTER] Session save error:', err);
+          console.error('Session save error:', err);
           return res.status(500).json({ message: "Session save failed" });
         }
         res.json({ user: { ...user, passwordHash: undefined } });
@@ -168,10 +157,9 @@ export async function registerRoutes(
       // Explicitly save session before sending response
       req.session.save((err) => {
         if (err) {
-          console.error('[LOGIN] Session save error:', err);
+          console.error('Session save error:', err);
           return res.status(500).json({ message: "Session save failed" });
         }
-        console.log('[LOGIN] Session saved successfully, userId:', user.id, 'sessionID:', req.sessionID);
         res.json({ user: { ...user, passwordHash: undefined } });
       });
     } catch (error) {
@@ -339,12 +327,6 @@ export async function registerRoutes(
 
   app.post("/api/contacts", authMiddleware, async (req, res) => {
     try {
-      console.log('[POST /api/contacts] Entered route handler', {
-        hasSession: !!req.session,
-        userId: req.userId,
-        sessionUserId: req.session?.userId,
-      });
-
       const userId = req.userId!;
       const data = insertContactSchema.parse({ ...req.body, userId });
       
