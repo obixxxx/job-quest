@@ -344,17 +344,20 @@ export async function registerRoutes(
       const data = insertContactSchema.parse({ ...req.body, userId });
       
       const contact = await storage.createContact(data);
-      
+
       // Generate playbook for the new contact
       await generatePlaybookForContact(userId, contact.id);
-      
+
+      // Award XP for adding a new contact
+      await awardXP(userId, 10, 0, "contact_added", { contactId: contact.id });
+
       // Update quest progress for new_contacts
       const today = new Date().toISOString().split('T')[0];
       await storage.incrementQuestProgress(userId, today, 'new_contacts');
-      
+
       // Check for badges
       await checkAndAwardBadges(userId);
-      
+
       res.json(contact);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -832,11 +835,11 @@ export async function registerRoutes(
   // Outcomes routes
   app.post("/api/outcomes", authMiddleware, async (req, res) => {
     try {
-      const { userId } = req.session;
+      const userId = req.userId!;
       const data = req.body;
 
       const outcome = await storage.createOutcome({
-        userId: userId!,
+        userId: userId,
         contactId: data.contactId,
         type: data.type,
         description: data.description,
@@ -849,7 +852,7 @@ export async function registerRoutes(
 
       // If this is an introduction, update the introduced contact's source
       if (data.type === 'introduction_made' && data.introducedToContactId) {
-        await storage.updateContact(data.introducedToContactId, userId!, {
+        await storage.updateContact(data.introducedToContactId, userId, {
           source: 'referral',
           notes: `Referred by ${data.contactName || 'contact'}`,
         });
@@ -864,8 +867,8 @@ export async function registerRoutes(
 
   app.get("/api/outcomes", authMiddleware, async (req, res) => {
     try {
-      const { userId } = req.session;
-      const outcomes = await storage.getAllOutcomes(userId!);
+      const userId = req.userId!;
+      const outcomes = await storage.getAllOutcomes(userId);
       res.json({ outcomes });
     } catch (error: any) {
       console.error("Error fetching outcomes:", error);
@@ -875,8 +878,8 @@ export async function registerRoutes(
 
   app.get("/api/outcomes/analytics", authMiddleware, async (req, res) => {
     try {
-      const { userId } = req.session;
-      const analytics = await storage.getOutcomesAnalytics(userId!);
+      const userId = req.userId!;
+      const analytics = await storage.getOutcomesAnalytics(userId);
       res.json(analytics);
     } catch (error: any) {
       console.error("Error fetching outcomes analytics:", error);

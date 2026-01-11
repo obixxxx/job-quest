@@ -95,20 +95,25 @@ FOLLOW-UP:
 ];
 
 async function seedTemplates() {
-  console.log("Checking if templates need seeding...");
-  
-  const existingTemplates = await db.select().from(templates).limit(1);
-  
-  if (existingTemplates.length === 0) {
+  console.log("Checking if DEFAULT templates need seeding...");
+
+  // Check specifically for default templates, not user templates
+  const existingDefaults = await db
+    .select()
+    .from(templates)
+    .where(sql`${templates.isDefault} = true`)
+    .limit(1);
+
+  if (existingDefaults.length === 0) {
     console.log("Seeding default templates...");
     for (const template of DEFAULT_TEMPLATES) {
       await db.insert(templates).values(template);
     }
     console.log(`Seeded ${DEFAULT_TEMPLATES.length} default templates`);
   } else {
-    console.log("Templates already exist, skipping seed");
+    console.log("Default templates already exist, skipping seed");
   }
-  
+
   process.exit(0);
 }
 
