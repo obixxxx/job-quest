@@ -19,12 +19,24 @@ import { useSideQuestBadge } from "@/components/game/side-quest-badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Contact, Interaction } from "@shared/schema";
+import type { Contact, Interaction, PlaybookAction } from "@shared/schema";
 
-interface FollowUpItem {
-  interaction: Interaction;
-  contact: Contact;
-}
+type FollowUpItem =
+  | {
+      type: "interaction";
+      interaction: Interaction;
+      contact: Contact;
+    }
+  | {
+      type: "playbook";
+      playbookAction: PlaybookAction & {
+        contactName: string;
+        contactCompany: string | null;
+        contactEmail: string | null;
+      };
+      contact: Contact;
+      dueDate: string | null;
+    };
 
 function getInitials(name: string): string {
   return name
@@ -63,17 +75,27 @@ export default function FollowUpsPage() {
     queryKey: ["/api/follow-ups"],
   });
 
-  const overdueItems = followUps?.filter(
-    (item) => item.interaction.followUpDate && isPast(new Date(item.interaction.followUpDate)) && !isToday(new Date(item.interaction.followUpDate))
-  ) || [];
+  const getItemDate = (item: FollowUpItem): string | null => {
+    if (item.type === "interaction") {
+      return item.interaction.followUpDate;
+    }
+    return item.dueDate;
+  };
 
-  const todayItems = followUps?.filter(
-    (item) => item.interaction.followUpDate && isToday(new Date(item.interaction.followUpDate))
-  ) || [];
+  const overdueItems = followUps?.filter((item) => {
+    const date = getItemDate(item);
+    return date && isPast(new Date(date)) && !isToday(new Date(date));
+  }) || [];
 
-  const upcomingItems = followUps?.filter(
-    (item) => item.interaction.followUpDate && !isPast(new Date(item.interaction.followUpDate)) && !isToday(new Date(item.interaction.followUpDate))
-  ) || [];
+  const todayItems = followUps?.filter((item) => {
+    const date = getItemDate(item);
+    return date && isToday(new Date(date));
+  }) || [];
+
+  const upcomingItems = followUps?.filter((item) => {
+    const date = getItemDate(item);
+    return date && !isPast(new Date(date)) && !isToday(new Date(date));
+  }) || [];
 
   const handleLogFollowUp = (contact: Contact) => {
     setSelectedContact(contact);
@@ -120,12 +142,16 @@ export default function FollowUpsPage() {
   };
 
   const renderFollowUpItem = (item: FollowUpItem, isOverdue: boolean = false) => {
-    const followUpDate = item.interaction.followUpDate
-      ? new Date(item.interaction.followUpDate)
-      : new Date();
+    const itemDate = getItemDate(item);
+    const followUpDate = itemDate ? new Date(itemDate) : new Date();
+    const itemId = item.type === "interaction" ? item.interaction.id : item.playbookAction.id;
+    const itemLabel =
+      item.type === "interaction"
+        ? "Follow-up needed"
+        : item.playbookAction.actionLabel;
 
     return (
-      <Card key={item.interaction.id} className={isOverdue ? "border-destructive/50" : ""}>
+      <Card key={itemId} className={isOverdue ? "border-destructive/50" : ""}>
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <Avatar className="w-10 h-10">
@@ -138,6 +164,9 @@ export default function FollowUpsPage() {
               <p className="font-medium truncate">{item.contact.name}</p>
               {item.contact.company && (
                 <p className="text-sm text-muted-foreground truncate">{item.contact.company}</p>
+              )}
+              {item.type === "playbook" && (
+                <p className="text-xs text-muted-foreground mt-1">{itemLabel}</p>
               )}
             </div>
 
@@ -153,9 +182,9 @@ export default function FollowUpsPage() {
               <Button
                 size="sm"
                 onClick={() => handleLogFollowUp(item.contact)}
-                data-testid={`button-follow-up-${item.interaction.id}`}
+                data-testid={`button-follow-up-${itemId}`}
               >
-                Complete
+                {item.type === "playbook" ? "Complete Action" : "Complete"}
               </Button>
             </div>
           </div>

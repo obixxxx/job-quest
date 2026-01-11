@@ -74,6 +74,7 @@ export interface IStorage {
   getPlaybookActions(userId: string, contactId: string): Promise<PlaybookAction[]>;
   getPendingPlaybookActions(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null })[]>;
   getNextAction(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null }) | null>;
+  getOverduePlaybookActions(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null })[]>;
   createPlaybookAction(action: InsertPlaybookAction): Promise<PlaybookAction>;
   updatePlaybookAction(id: string, userId: string, updates: Partial<PlaybookAction>): Promise<PlaybookAction | undefined>;
   completePlaybookAction(id: string, userId: string, interactionId?: string): Promise<PlaybookAction | undefined>;
@@ -369,7 +370,7 @@ export class DatabaseStorage implements IStorage {
 
   async getNextAction(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null }) | null> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Priority: overdue first, then by action order
     const results = await db.select({
       id: playbookActions.id,
@@ -400,8 +401,40 @@ export class DatabaseStorage implements IStorage {
         asc(playbookActions.actionOrder)
       )
       .limit(1);
-    
+
     return results[0] || null;
+  }
+
+  async getOverduePlaybookActions(userId: string): Promise<(PlaybookAction & { contactName: string; contactCompany: string | null; contactEmail: string | null })[]> {
+    const today = new Date().toISOString().split('T')[0];
+
+    const results = await db.select({
+      id: playbookActions.id,
+      userId: playbookActions.userId,
+      contactId: playbookActions.contactId,
+      actionType: playbookActions.actionType,
+      actionLabel: playbookActions.actionLabel,
+      actionOrder: playbookActions.actionOrder,
+      templateId: playbookActions.templateId,
+      status: playbookActions.status,
+      completedAt: playbookActions.completedAt,
+      interactionId: playbookActions.interactionId,
+      dueDate: playbookActions.dueDate,
+      createdAt: playbookActions.createdAt,
+      contactName: contacts.name,
+      contactCompany: contacts.company,
+      contactEmail: contacts.email,
+    })
+      .from(playbookActions)
+      .innerJoin(contacts, eq(playbookActions.contactId, contacts.id))
+      .where(and(
+        eq(playbookActions.userId, userId),
+        eq(playbookActions.status, "pending"),
+        lte(playbookActions.dueDate, today)
+      ))
+      .orderBy(asc(playbookActions.dueDate), asc(playbookActions.actionOrder));
+
+    return results;
   }
 
   async createPlaybookAction(action: InsertPlaybookAction): Promise<PlaybookAction> {

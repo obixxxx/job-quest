@@ -454,16 +454,34 @@ export async function registerRoutes(
   app.get("/api/follow-ups", authMiddleware, async (req, res) => {
     try {
       const userId = req.userId!;
+
+      // Get interactions that need follow-up
       const followUps = await storage.getFollowUps(userId);
-      
-      const followUpItems = await Promise.all(
+      const interactionItems = await Promise.all(
         followUps.map(async (interaction) => {
           const contact = await storage.getContact(interaction.contactId, userId);
-          return contact ? { interaction, contact } : null;
+          return contact ? { type: 'interaction' as const, interaction, contact } : null;
         })
       );
-      
-      res.json(followUpItems.filter(Boolean));
+
+      // Get overdue playbook actions
+      const overdueActions = await storage.getOverduePlaybookActions(userId);
+      const playbookItems = await Promise.all(
+        overdueActions.map(async (action) => {
+          const contact = await storage.getContact(action.contactId, userId);
+          return contact ? {
+            type: 'playbook' as const,
+            playbookAction: action,
+            contact,
+            // For consistent sorting with interactions
+            dueDate: action.dueDate
+          } : null;
+        })
+      );
+
+      const allItems = [...interactionItems, ...playbookItems].filter(Boolean);
+
+      res.json(allItems);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch follow-ups" });
     }
