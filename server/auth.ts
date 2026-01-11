@@ -27,8 +27,20 @@ declare global {
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  console.log('[AUTH MIDDLEWARE]', req.method, req.path, {
+    hasSession: !!req.session,
+    sessionId: req.sessionID,
+    userId: req.session?.userId,
+    headers: {
+      cookie: req.headers.cookie,
+      'x-forwarded-proto': req.headers['x-forwarded-proto'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+    },
+  });
+
   const userId = req.session?.userId;
   if (!userId) {
+    console.log('[AUTH MIDDLEWARE] UNAUTHORIZED - no userId in session');
     return res.status(401).json({ message: "Unauthorized" });
   }
   req.userId = userId;

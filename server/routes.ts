@@ -104,6 +104,17 @@ export async function registerRoutes(
     })
   );
 
+  // DIAGNOSTIC: Log session state after session middleware
+  app.use((req, res, next) => {
+    console.log('[SESSION LAYER]', req.method, req.path, {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      userId: req.session?.userId,
+      cookie: req.session?.cookie,
+    });
+    next();
+  });
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -308,6 +319,12 @@ export async function registerRoutes(
 
   app.post("/api/contacts", authMiddleware, async (req, res) => {
     try {
+      console.log('[POST /api/contacts] Entered route handler', {
+        hasSession: !!req.session,
+        userId: req.userId,
+        sessionUserId: req.session?.userId,
+      });
+
       const userId = req.userId!;
       const data = insertContactSchema.parse({ ...req.body, userId });
       
