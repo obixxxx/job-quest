@@ -153,7 +153,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
 
               {revenueAmount && (
                 <div className="space-y-2">
-                  <Label htmlFor="revenueType">Revenue Type</Label>
+                  <Label>Revenue Type</Label>
                   <Select value={revenueType} onValueChange={setRevenueType}>
                     <SelectTrigger>
                       <SelectValue />
