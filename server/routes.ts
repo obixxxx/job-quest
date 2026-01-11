@@ -434,12 +434,25 @@ export async function registerRoutes(
       if (newWarmthLevel) {
         await storage.updateContact(req.body.contactId, userId, { warmthLevel: newWarmthLevel });
       }
-      
+
       // Award XP and update streak
       await awardXP(userId, xpAwarded, osAwarded, "interaction_logged", { interactionId: interaction.id });
       await updateStreak(userId);
       await checkAndAwardBadges(userId);
-      
+
+      // Update quest progress based on interaction type
+      const today = new Date().toISOString().split('T')[0];
+      const interactionType = req.body.type?.toLowerCase() || '';
+      const direction = req.body.direction?.toLowerCase() || '';
+
+      if (interactionType === 'email' && direction === 'outbound') {
+        await storage.incrementQuestProgress(userId, today, 'outreach_5');
+      } else if (interactionType === 'call') {
+        await storage.incrementQuestProgress(userId, today, 'calls');
+      } else if (interactionType === 'linkedin' || interactionType.includes('linkedin')) {
+        await storage.incrementQuestProgress(userId, today, 'linkedin');
+      }
+
       res.json({ ...interaction, xpAwarded, osAwarded });
     } catch (error) {
       console.error("Interaction error:", error);
