@@ -57,19 +57,21 @@ job-quest/
 │       │   ├── dashboard/    # Dashboard widgets
 │       │   ├── game/         # Game mechanic UI (XP bar, streak, badges)
 │       │   ├── interactions/ # Interaction logging
+│       │   ├── outcomes/     # Outcome tracking components
 │       │   └── playbook/     # Playbook action UI
 │       ├── hooks/            # React hooks (use-mobile, use-toast)
 │       ├── lib/              # Client utilities
 │       │   ├── auth.tsx      # AuthContext provider
 │       │   ├── queryClient.ts # React Query config
 │       │   └── utils.ts      # Helper functions
-│       ├── pages/            # Route pages (9 pages)
+│       ├── pages/            # Route pages (10 pages)
 │       │   ├── auth.tsx      # Login/registration
 │       │   ├── dashboard.tsx # Main dashboard
 │       │   ├── contacts.tsx  # Contact list
 │       │   ├── contact-detail.tsx # Contact profile
 │       │   ├── follow-ups.tsx # Follow-up management
 │       │   ├── opportunities.tsx # Job opportunities
+│       │   ├── outcomes.tsx  # Outcomes tracking & analytics
 │       │   ├── achievements.tsx # Badges
 │       │   ├── templates.tsx # Email templates
 │       │   └── not-found.tsx # 404 page
@@ -401,13 +403,14 @@ function App() {
 
 ## Data Model
 
-### Schema Overview (11 tables)
+### Schema Overview (12 tables)
 
 ```
 users
 ├── contacts
 │   ├── interactions
 │   ├── playbookActions
+│   ├── outcomes
 │   └── opportunities
 │       └── interviews
 ├── xpLogs
@@ -459,8 +462,9 @@ users
 
 **Key Fields**:
 - `id`, `userId`, `contactId`
-- `type` (text) - "email", "linkedin_dm", "call", "coffee", "comment", "physical_letter"
+- `type` (text) - "email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"
 - `direction` (text) - "outbound", "inbound"
+- `status` (text) - "completed", "scheduled", "cancelled" (for scheduled interactions)
 - `messageContent` (text)
 - `outcome` (text) - "response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"
 - `outcomeDetails` (text)
@@ -474,6 +478,33 @@ users
 2. `calculateInteractionRewards()` computes XP/OS based on type + outcome
 3. Values stored in `xpAwarded`/`osAwarded`
 4. User's `totalXP`/`totalOS` updated via `awardXP()`
+
+---
+
+#### `outcomes`
+**Purpose**: Major relationship milestones and results.
+
+**Key Fields**:
+- `id`, `userId`, `contactId`
+- `type` (text) - "job_offer", "client_project", "introduction_made", "referral_obtained", "interview", "dead_end", "other"
+- `description` (text) - What happened
+- `revenueAmount` (integer, nullable) - Dollar amount
+- `revenueType` (text, nullable) - "salary", "one_time", "monthly_recurring", "yearly_recurring"
+- `outcomeDate` (date) - When outcome occurred
+- `sourceType` (text, nullable) - "cold_outreach", "warm_intro", "referral", "event", "linkedin", "mutual_connection", "text"
+- `introducedToContactId` (varchar, nullable) - If introduction_made, who were you introduced to
+- `interactionCount` (integer, auto-calculated) - Number of interactions that led to this
+- `durationDays` (integer, auto-calculated) - Days from first interaction to outcome
+
+**Relations**:
+- Many-to-one: `user`, `contact`
+- One-to-one (optional): `introducedToContact`
+
+**Use Cases**:
+- Track job offers and revenue
+- Measure relationship ROI (interactions → outcome)
+- Analytics on what sources produce best results
+- Timeline view of networking journey
 
 ---
 
@@ -685,6 +716,14 @@ DELETE /api/templates/:id          - Delete template
 ### Achievements
 ```
 GET    /api/badges                 - Get user badges
+```
+
+### Outcomes
+```
+GET    /api/outcomes               - List all outcomes with contact info
+POST   /api/outcomes               - Create outcome (auto-calculates interaction count & duration)
+GET    /api/outcomes/analytics     - Get revenue analytics (by source, by type, total)
+GET    /api/contacts/:id/detail    - Includes outcomes array for contact
 ```
 
 **Authentication**: All endpoints except `/api/auth/register` and `/api/auth/login` require session authentication via `authMiddleware`.
@@ -1003,6 +1042,7 @@ interface SessionData {
   <Route path="/contacts/:id" component={ContactDetail} />
   <Route path="/follow-ups" component={FollowUps} />
   <Route path="/opportunities" component={Opportunities} />
+  <Route path="/outcomes" component={Outcomes} />
   <Route path="/achievements" component={Achievements} />
   <Route path="/templates" component={Templates} />
   <Route component={NotFound} />

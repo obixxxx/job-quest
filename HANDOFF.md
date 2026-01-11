@@ -597,7 +597,7 @@ npm run build && npm run start
 - `server/game-engine.ts:9-45` (`calculateInteractionRewards`)
 
 **Where is the database schema defined?**
-- `shared/schema.ts` (11 tables)
+- `shared/schema.ts` (12 tables)
 
 **Where are API routes defined?**
 - `server/routes.ts` (all 29 routes in one file)
@@ -619,6 +619,41 @@ npm run build && npm run start
 
 **Where is the database connection configured?**
 - `server/db.ts` (PostgreSQL pool + Drizzle ORM)
+
+---
+
+## Recent Features
+
+### Outcomes Tracking (✅ Implemented)
+
+**What**: Track major relationship milestones (interviews, job offers, client projects, introductions, referrals, dead ends) with revenue tracking and analytics.
+
+**Key Components**:
+- **Database**: `outcomes` table with revenue fields and auto-calculated metrics
+- **Frontend**: `/outcomes` page with timeline and revenue analytics
+- **UI**: Outcome badges on contact cards, "Record Outcome" button on contact detail
+- **API**: `GET/POST /api/outcomes`, `GET /api/outcomes/analytics`
+
+**How It Works**:
+1. User records outcome from contact detail page
+2. System auto-calculates interaction count and duration since first contact
+3. Outcomes appear on contact card and `/outcomes` timeline
+4. Analytics show total revenue, revenue by source, revenue by type
+
+**Files**:
+- Schema: `shared/schema.ts` (outcomes table, lines 273-305)
+- Backend: `server/storage.ts` (createOutcome, getAllOutcomes, getOutcomesAnalytics)
+- Routes: `server/routes.ts` (outcomes routes, lines 870-923)
+- Frontend: `client/src/pages/outcomes.tsx`, `client/src/components/outcomes/`
+
+**Features**:
+- ✅ Revenue tracking (salary, one-time, recurring)
+- ✅ Source attribution (how you met the contact)
+- ✅ Auto-calculated ROI metrics (interactions → outcome)
+- ✅ Timeline view with revenue badges
+- ✅ Contact linking for introductions
+- ✅ Scheduled interactions (status field: completed/scheduled/cancelled)
+- ⏸️ AI integration (pending - will enhance with outcomes data when AI is implemented)
 
 ---
 
@@ -762,10 +797,10 @@ Based on `docs/KNOWN-GAPS.md`, these are the most important issues to address:
 │  Render Shell → npm run db:push (for schema)           │
 │                                                          │
 │ KEY FILES                                               │
-│  server/routes.ts     → All API routes (29 endpoints)  │
+│  server/routes.ts     → All API routes (33 endpoints)  │
 │  server/game-engine.ts → XP/OS/badge logic             │
 │  server/storage.ts    → Database queries               │
-│  shared/schema.ts     → Database schema (11 tables)    │
+│  shared/schema.ts     → Database schema (12 tables)    │
 │  client/src/App.tsx   → Frontend router                │
 │                                                          │
 │ DATABASE                                                │
