@@ -15,7 +15,7 @@ import {
   type Outcome, type InsertOutcome,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, isNull, isNotNull, or } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull, isNotNull, or, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Users

@@ -870,6 +870,8 @@ export async function registerRoutes(
       const userId = req.userId!;
       const data = req.body;
 
+      console.log("Creating outcome with data:", JSON.stringify(data, null, 2));
+
       const outcome = await storage.createOutcome({
         userId: userId,
         contactId: data.contactId,
@@ -893,7 +895,8 @@ export async function registerRoutes(
       res.json({ outcome });
     } catch (error: any) {
       console.error("Error creating outcome:", error);
-      res.status(500).json({ error: "Failed to create outcome" });
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ error: "Failed to create outcome", message: error.message });
     }
   });
 
