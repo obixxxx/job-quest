@@ -28,7 +28,9 @@ const interactionTypes = [
   { value: "linkedin_dm", label: "LinkedIn DM", icon: MessageSquare },
   { value: "call", label: "Phone Call", icon: Phone },
   { value: "coffee", label: "Coffee Chat", icon: Coffee },
-  { value: "physical_letter", label: "Physical Letter", icon: FileText },
+  { value: "text", label: "Text/SMS", icon: Send },
+  { value: "comment", label: "Comment", icon: MessageSquare },
+  { value: "physical_letter", label: "Letter", icon: FileText },
 ];
 
 const outcomes = [
@@ -40,7 +42,7 @@ const outcomes = [
 ];
 
 const interactionFormSchema = z.object({
-  type: z.enum(["email", "linkedin_dm", "call", "coffee", "physical_letter"]),
+  type: z.enum(["email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"]),
   direction: z.enum(["outbound", "inbound"]),
   outcome: z.enum(["response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"]).optional(),
   outcomeDetails: z.string().optional(),
@@ -86,7 +88,7 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
           render={({ field }) => (
             <FormItem>
               <FormLabel>Interaction Type</FormLabel>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
                 {interactionTypes.map((type) => {
                   const Icon = type.icon;
                   const isSelected = field.value === type.value;

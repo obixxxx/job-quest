@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(npm run build:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(kill:*)",
+      "Bash(npm run check:*)",
+      "Bash(npx tsx server/seed-measurements.ts)",
+      "Bash(node --require dotenv/config --import tsx/esm server/seed-measurements.ts:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Skill(superpowers:using-superpowers)",
+      "Skill(superpowers:brainstorming)",
+      "Bash(mkdir:*)",
+      "Bash(wc:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npm run db:push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(npm run dev:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npm run dev:*)",
+      "Skill(superpowers:executing-plans)",
+      "Bash(PORT=8080 DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npm run dev)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" PORT=8080 npm run dev)",
+      "Bash(git push:*)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx tsx:*)",
+      "Bash(git reset:*)"
+    ]
+  }
+}

@@ -483,6 +483,7 @@ export async function registerRoutes(
 
       res.json(allItems);
     } catch (error) {
+      console.error("Follow-ups error:", error);
       res.status(500).json({ message: "Failed to fetch follow-ups" });
     }
   });

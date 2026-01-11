@@ -78,7 +78,7 @@ export function PlaybookPanel({
 
       // Then, complete the playbook action with the interaction ID
       await apiRequest("POST", `/api/playbook/${actionToComplete.id}/complete`, {
-        interactionId: interactionResult.interaction.id,
+        interactionId: interactionResult.id,
       });
 
       setIsInteractionDialogOpen(false);
@@ -262,7 +262,7 @@ export function PlaybookPanel({
       />
 
       <Dialog open={isInteractionDialogOpen} onOpenChange={setIsInteractionDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Log Interaction for Action</DialogTitle>
           </DialogHeader>

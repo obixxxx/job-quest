@@ -430,6 +430,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(playbookActions.userId, userId),
         eq(playbookActions.status, "pending"),
+        isNotNull(playbookActions.dueDate),
         lte(playbookActions.dueDate, today)
       ))
       .orderBy(asc(playbookActions.dueDate), asc(playbookActions.actionOrder));
