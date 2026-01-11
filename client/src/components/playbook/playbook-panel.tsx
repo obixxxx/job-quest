@@ -2,10 +2,19 @@ import { useState } from "react";
 import { Check, Circle, SkipForward, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { TemplateModal } from "./template-modal";
+import { InteractionForm } from "../interactions/interaction-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useXPPopup } from "../game/xp-popup";
+import { useSideQuestBadge } from "../game/side-quest-badge";
 
 interface Template {
   id: string;
@@ -43,18 +52,69 @@ export function PlaybookPanel({
   contactCompany,
 }: PlaybookPanelProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [actionToComplete, setActionToComplete] = useState<PlaybookAction | null>(null);
+  const [isInteractionDialogOpen, setIsInteractionDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { showXPGain, XPPopupComponent } = useXPPopup();
+  const { showBadge, BadgeComponent } = useSideQuestBadge();
 
-  const completeMutation = useMutation({
-    mutationFn: async (actionId: string) => {
-      return apiRequest("POST", `/api/playbook/${actionId}/complete`);
-    },
-    onSuccess: () => {
+  const handleCompleteAction = (action: PlaybookAction) => {
+    setActionToComplete(action);
+    setIsInteractionDialogOpen(true);
+  };
+
+  const handleInteractionSubmit = async (data: any) => {
+    if (!actionToComplete) return;
+    setIsSubmitting(true);
+
+    try {
+      // First, create the interaction
+      const interactionResponse = await apiRequest("POST", "/api/interactions", {
+        ...data,
+        contactId,
+      });
+      const interactionResult = await interactionResponse.json();
+
+      // Then, complete the playbook action with the interaction ID
+      await apiRequest("POST", `/api/playbook/${actionToComplete.id}/complete`, {
+        interactionId: interactionResult.interaction.id,
+      });
+
+      setIsInteractionDialogOpen(false);
+      setActionToComplete(null);
+
+      // Show XP gain popup
+      if (interactionResult.xpAwarded > 0 || interactionResult.osAwarded > 0) {
+        showXPGain(interactionResult.xpAwarded, interactionResult.osAwarded);
+      }
+
+      // Show badges for special outcomes
+      if (data.outcome === "intel_gathered" || data.outcome === "intro_obtained") {
+        showBadge(
+          data.outcome === "intel_gathered" ? "Intel Gathered" : "Intro Obtained",
+          "Every connection counts!"
+        );
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/contacts", contactId, "detail"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Action completed!", description: "+XP earned" });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-ups"] });
+
+      toast({
+        title: "Action completed!",
+        description: `+${interactionResult.xpAwarded} XP earned`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to complete action",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const skipMutation = useMutation({
     mutationFn: async (actionId: string) => {
@@ -98,6 +158,9 @@ export function PlaybookPanel({
 
   return (
     <>
+      {XPPopupComponent}
+      {BadgeComponent}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -154,8 +217,7 @@ export function PlaybookPanel({
                     <>
                       <Button
                         size="sm"
-                        onClick={() => completeMutation.mutate(action.id)}
-                        disabled={completeMutation.isPending}
+                        onClick={() => handleCompleteAction(action)}
                         data-testid={`button-complete-action-${action.id}`}
                       >
                         Mark Complete
@@ -198,6 +260,30 @@ export function PlaybookPanel({
         contactEmail={contactEmail}
         contactCompany={contactCompany}
       />
+
+      <Dialog open={isInteractionDialogOpen} onOpenChange={setIsInteractionDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Log Interaction for Action</DialogTitle>
+          </DialogHeader>
+          {actionToComplete && (
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground">
+                Action: <span className="font-medium">{actionToComplete.actionLabel}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Contact: <span className="font-medium">{contactName}</span>
+              </p>
+            </div>
+          )}
+          <InteractionForm
+            contact={{ id: contactId, name: contactName, email: contactEmail, company: contactCompany }}
+            onSubmit={handleInteractionSubmit}
+            onCancel={() => setIsInteractionDialogOpen(false)}
+            isPending={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
