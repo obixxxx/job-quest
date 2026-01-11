@@ -697,6 +697,19 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/playbook/:actionId/revert", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.userId!;
+      const action = await storage.revertPlaybookAction(req.params.actionId, userId);
+      if (!action) {
+        return res.status(404).json({ message: "Action not found" });
+      }
+      res.json(action);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to revert action" });
+    }
+  });
+
   // Get contact with playbook and interactions
   app.get("/api/contacts/:id/detail", authMiddleware, async (req, res) => {
     try {

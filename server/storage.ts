@@ -78,6 +78,7 @@ export interface IStorage {
   updatePlaybookAction(id: string, userId: string, updates: Partial<PlaybookAction>): Promise<PlaybookAction | undefined>;
   completePlaybookAction(id: string, userId: string, interactionId?: string): Promise<PlaybookAction | undefined>;
   skipPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined>;
+  revertPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined>;
 
   // Selected Quests
   getSelectedQuests(userId: string, date: string): Promise<SelectedQuest[]>;
@@ -431,6 +432,18 @@ export class DatabaseStorage implements IStorage {
   async skipPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined> {
     const [action] = await db.update(playbookActions)
       .set({ status: "skipped" })
+      .where(and(eq(playbookActions.id, id), eq(playbookActions.userId, userId)))
+      .returning();
+    return action || undefined;
+  }
+
+  async revertPlaybookAction(id: string, userId: string): Promise<PlaybookAction | undefined> {
+    const [action] = await db.update(playbookActions)
+      .set({
+        status: "pending",
+        completedAt: null,
+        interactionId: null
+      })
       .where(and(eq(playbookActions.id, id), eq(playbookActions.userId, userId)))
       .returning();
     return action || undefined;

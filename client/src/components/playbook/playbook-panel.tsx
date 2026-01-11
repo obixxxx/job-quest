@@ -66,6 +66,17 @@ export function PlaybookPanel({
     },
   });
 
+  const revertMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      return apiRequest("POST", `/api/playbook/${actionId}/revert`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts", contactId, "detail"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      toast({ title: "Action reverted to pending" });
+    },
+  });
+
   const getStatusIcon = (action: PlaybookAction) => {
     if (action.status === "completed") {
       return <Check className="w-5 h-5 text-game-xp" />;
@@ -161,6 +172,18 @@ export function PlaybookPanel({
                     </>
                   )}
                 </div>
+              )}
+
+              {(action.status === "completed" || action.status === "skipped") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => revertMutation.mutate(action.id)}
+                  disabled={revertMutation.isPending}
+                  data-testid={`button-undo-action-${action.id}`}
+                >
+                  Undo
+                </Button>
               )}
             </div>
           ))}
