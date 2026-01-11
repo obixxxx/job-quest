@@ -8,12 +8,18 @@ import { DollarSign, Briefcase, Users } from 'lucide-react';
 export default function Outcomes() {
   const { data: outcomesData, isLoading: outcomesLoading } = useQuery({
     queryKey: ['/api/outcomes'],
-    queryFn: () => apiRequest('/api/outcomes'),
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/outcomes');
+      return res.json();
+    },
   });
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ['/api/outcomes/analytics'],
-    queryFn: () => apiRequest('/api/outcomes/analytics'),
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/outcomes/analytics');
+      return res.json();
+    },
   });
 
   if (outcomesLoading || analyticsLoading) {
