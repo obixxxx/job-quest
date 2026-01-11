@@ -40,11 +40,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest('/api/outcomes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }),
+      apiRequest('POST', '/api/outcomes', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes'] });
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes/analytics'] });

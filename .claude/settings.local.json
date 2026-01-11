@@ -29,7 +29,8 @@
       "Bash(git push:*)",
       "Skill(superpowers:systematic-debugging)",
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_z8jOVFPkyDN7@ep-shiny-bonus-ahcf47oa-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx tsx:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(xargs kill -9)"
     ]
   }
 }
