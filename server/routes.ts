@@ -130,10 +130,17 @@ export async function registerRoutes(
         email: data.email,
         passwordHash,
       });
-      
+
       req.session.userId = user.id;
-      
-      res.json({ user: { ...user, passwordHash: undefined } });
+
+      // Explicitly save session before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('[REGISTER] Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        res.json({ user: { ...user, passwordHash: undefined } });
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -155,10 +162,18 @@ export async function registerRoutes(
       if (!isValid) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
-      
+
       req.session.userId = user.id;
-      
-      res.json({ user: { ...user, passwordHash: undefined } });
+
+      // Explicitly save session before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('[LOGIN] Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        console.log('[LOGIN] Session saved successfully, userId:', user.id, 'sessionID:', req.sessionID);
+        res.json({ user: { ...user, passwordHash: undefined } });
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
