@@ -58,7 +58,7 @@ export function ContactForm({ contact, onSubmit, onCancel, isPending }: ContactF
       source: contact?.source || "",
       warmthLevel: (contact?.warmthLevel as "cold" | "warm" | "hot") || "cold",
       notes: contact?.notes || "",
-      usePlaybook: true,
+      usePlaybook: contact?.usePlaybook ?? true,
     },
   });
 
