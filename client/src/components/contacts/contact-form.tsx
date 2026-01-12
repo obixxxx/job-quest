@@ -143,19 +143,21 @@ export function ContactForm({ contact, onSubmit, onCancel, isPending }: ContactF
             name="source"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Source</FormLabel>
+                <FormLabel>How You Met</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-contact-source">
-                      <SelectValue placeholder="How did you meet?" />
+                      <SelectValue placeholder="How did you meet this person?" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="existing_friend">Existing Friend/Family</SelectItem>
+                    <SelectItem value="former_colleague">Former Colleague</SelectItem>
+                    <SelectItem value="referral">Referral/Introduction</SelectItem>
                     <SelectItem value="linkedin">LinkedIn</SelectItem>
-                    <SelectItem value="referral">Referral</SelectItem>
-                    <SelectItem value="event">Event</SelectItem>
+                    <SelectItem value="event">Event/Conference</SelectItem>
                     <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                    <SelectItem value="job_posting">Job Posting</SelectItem>
+                    <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>

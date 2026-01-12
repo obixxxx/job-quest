@@ -38,6 +38,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
   const [outcomeDate, setOutcomeDate] = useState(new Date().toISOString().split('T')[0]);
   const [revenueAmount, setRevenueAmount] = useState('');
   const [revenueType, setRevenueType] = useState('one_time');
+  const [sourceType, setSourceType] = useState('');
 
   const createMutation = useMutation({
     mutationFn: (data: InsertOutcome) =>
@@ -61,6 +62,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
     setOutcomeDate(new Date().toISOString().split('T')[0]);
     setRevenueAmount('');
     setRevenueType('one_time');
+    setSourceType('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -79,7 +81,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
       outcomeDate,
       revenueAmount: revenueAmount ? parseInt(revenueAmount) : null,
       revenueType: revenueAmount ? revenueType : null,
-      sourceType: null, // No longer collecting this in outcome form
+      sourceType: sourceType || null,
     });
   };
 
@@ -109,6 +111,26 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
                 <SelectItem value="introduction_made">Introduction Made</SelectItem>
                 <SelectItem value="referral_obtained">Referral Obtained</SelectItem>
                 <SelectItem value="dead_end">Dead End</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>How You Met (optional)</Label>
+            <Select value={sourceType} onValueChange={setSourceType}>
+              <SelectTrigger>
+                <SelectValue placeholder="How did you meet?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="existing_friend">Existing Friend/Family</SelectItem>
+                <SelectItem value="former_colleague">Former Colleague</SelectItem>
+                <SelectItem value="referral">Referral/Introduction</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="event">Event/Conference</SelectItem>
+                <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
+                <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
+                <SelectItem value="text">Text/Phone</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
