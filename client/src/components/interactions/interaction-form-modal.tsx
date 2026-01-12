@@ -1,28 +1,21 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InteractionForm } from './interaction-form';
-import type { Contact } from '@shared/schema';
 
 interface InteractionFormModalProps {
-  contact: Contact;
+  contactId: string;
+  contactName: string;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
-  isPending?: boolean;
 }
 
-export function InteractionFormModal({ contact, isOpen, onClose, onSubmit, isPending }: InteractionFormModalProps) {
+export function InteractionFormModal({ contactId, contactName, isOpen, onClose }: InteractionFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log Interaction with {contact.name}</DialogTitle>
+          <DialogTitle>Log Interaction with {contactName}</DialogTitle>
         </DialogHeader>
-        <InteractionForm
-          contact={contact}
-          onSubmit={onSubmit}
-          onCancel={onClose}
-          isPending={isPending}
-        />
+        <InteractionForm contactId={contactId} onSuccess={onClose} />
       </DialogContent>
     </Dialog>
   );

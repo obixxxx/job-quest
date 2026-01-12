@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,7 +22,11 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import type { Contact } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useXPPopup } from "@/components/game/xp-popup";
+import { useSideQuestBadge } from "@/components/game/side-quest-badge";
 
 const interactionTypes = [
   { value: "email", label: "Email", icon: Mail },
@@ -53,13 +58,16 @@ const interactionFormSchema = z.object({
 type InteractionFormValues = z.infer<typeof interactionFormSchema>;
 
 interface InteractionFormProps {
-  contact: Contact;
-  onSubmit: (data: InteractionFormValues) => void;
-  onCancel: () => void;
-  isPending?: boolean;
+  contactId: string;
+  onSuccess: () => void;
 }
 
-export function InteractionForm({ contact, onSubmit, onCancel, isPending }: InteractionFormProps) {
+export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) {
+  const [isPending, setIsPending] = useState(false);
+  const { toast } = useToast();
+  const { refreshUser } = useAuth();
+  const { showXPGain } = useXPPopup();
+  const { showBadge } = useSideQuestBadge();
   const form = useForm<InteractionFormValues>({
     resolver: zodResolver(interactionFormSchema),
     defaultValues: {
@@ -75,14 +83,46 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
   const selectedStatus = form.watch("status");
   const outcomeData = outcomes.find((o) => o.value === selectedOutcome);
 
+  const handleSubmit = async (data: InteractionFormValues) => {
+    setIsPending(true);
+    try {
+      const response = await apiRequest("POST", "/api/interactions", {
+        ...data,
+        contactId,
+      });
+      const result = await response.json();
+
+      if (result.xpAwarded > 0 || result.osAwarded > 0) {
+        showXPGain(result.xpAwarded, result.osAwarded);
+      }
+
+      if (data.outcome === "intel_gathered" || data.outcome === "intro_obtained") {
+        showBadge(
+          data.outcome === "intel_gathered" ? "Intel Gathered" : "Intro Obtained",
+          "Every connection counts!"
+        );
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      refreshUser();
+      toast({ title: "Interaction logged!", description: `+${result.xpAwarded} XP earned` });
+
+      onSuccess();
+    } catch (error) {
+      toast({
+        title: "Failed to log interaction",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="pb-4 border-b border-border">
-          <p className="text-sm text-muted-foreground">Logging interaction with</p>
-          <p className="font-semibold text-lg">{contact.name}</p>
-          {contact.company && <p className="text-sm text-muted-foreground">{contact.company}</p>}
-        </div>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 
         <FormField
           control={form.control}
@@ -244,9 +284,6 @@ export function InteractionForm({ contact, onSubmit, onCancel, isPending }: Inte
         )}
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-interaction">
-            Cancel
-          </Button>
           <Button type="submit" disabled={isPending || !selectedOutcome || !selectedStatus} data-testid="button-save-interaction">
             <Send className="w-4 h-4 mr-2" />
             {isPending ? "Logging..." : "Log Interaction"}

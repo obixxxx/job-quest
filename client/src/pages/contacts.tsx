@@ -20,10 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ContactCard } from "@/components/contacts/contact-card";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { InteractionFormModal } from "@/components/interactions/interaction-form-modal";
-import { useXPPopup } from "@/components/game/xp-popup";
-import { useSideQuestBadge } from "@/components/game/side-quest-badge";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Contact, Interaction } from "@shared/schema";
 
@@ -33,16 +30,13 @@ interface ContactWithInteraction {
 }
 
 export default function ContactsPage() {
-  const { refreshUser } = useAuth();
   const { toast } = useToast();
-  const { showXPGain, XPPopupComponent } = useXPPopup();
-  const { showBadge, BadgeComponent } = useSideQuestBadge();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [warmthFilter, setWarmthFilter] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [logInteractionContact, setLogInteractionContact] = useState<Contact | null>(null);
+  const [logInteractionContact, setLogInteractionContact] = useState<{ id: string; name: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
@@ -115,45 +109,7 @@ export default function ContactsPage() {
   };
 
   const handleLogInteraction = (contact: Contact) => {
-    setLogInteractionContact(contact);
-  };
-
-  const handleInteractionSubmit = async (data: any) => {
-    if (!logInteractionContact) return;
-    setIsPending(true);
-    try {
-      const response = await apiRequest("POST", "/api/interactions", {
-        ...data,
-        contactId: logInteractionContact.id,
-      });
-      const result = await response.json();
-
-      setLogInteractionContact(null);
-
-      if (result.xpAwarded > 0 || result.osAwarded > 0) {
-        showXPGain(result.xpAwarded, result.osAwarded);
-      }
-
-      if (data.outcome === "intel_gathered" || data.outcome === "intro_obtained") {
-        showBadge(
-          data.outcome === "intel_gathered" ? "Intel Gathered" : "Intro Obtained",
-          "Every connection counts!"
-        );
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      refreshUser();
-      toast({ title: "Interaction logged!", description: `+${result.xpAwarded} XP earned` });
-    } catch (error) {
-      toast({
-        title: "Failed to log interaction",
-        description: error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPending(false);
-    }
+    setLogInteractionContact({ id: contact.id, name: contact.name });
   };
 
   const openEditDialog = (contact: Contact) => {
@@ -170,9 +126,6 @@ export default function ContactsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {XPPopupComponent}
-      {BadgeComponent}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -276,11 +229,10 @@ export default function ContactsPage() {
       {/* Interaction Form Modal */}
       {logInteractionContact && (
         <InteractionFormModal
-          contact={logInteractionContact}
+          contactId={logInteractionContact.id}
+          contactName={logInteractionContact.name}
           isOpen={!!logInteractionContact}
           onClose={() => setLogInteractionContact(null)}
-          onSubmit={handleInteractionSubmit}
-          isPending={isPending}
         />
       )}
     </div>
