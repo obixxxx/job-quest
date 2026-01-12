@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Contact } from "@shared/schema";
 
 const contactFormSchema = z.object({
@@ -31,6 +33,7 @@ const contactFormSchema = z.object({
   source: z.string().optional(),
   warmthLevel: z.enum(["cold", "warm", "hot"]),
   notes: z.string().optional(),
+  usePlaybook: z.boolean().default(true),
 });
 
 type ContactFormValues = z.infer<typeof contactFormSchema>;
@@ -55,6 +58,7 @@ export function ContactForm({ contact, onSubmit, onCancel, isPending }: ContactF
       source: contact?.source || "",
       warmthLevel: (contact?.warmthLevel as "cold" | "warm" | "hot") || "cold",
       notes: contact?.notes || "",
+      usePlaybook: true,
     },
   });
 
@@ -202,7 +206,31 @@ export function ContactForm({ contact, onSubmit, onCancel, isPending }: ContactF
             </FormItem>
           )}
         />
-        
+
+        {/* Use Playbook Checkbox */}
+        <FormField
+          control={form.control}
+          name="usePlaybook"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  Use playbook for this contact
+                </FormLabel>
+                <FormDescription>
+                  Generate structured outreach sequence (emails, follow-ups, calls). Uncheck for freestyle relationship tracking.
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-contact">
             Cancel
