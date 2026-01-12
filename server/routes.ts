@@ -332,8 +332,10 @@ export async function registerRoutes(
       
       const contact = await storage.createContact(data);
 
-      // Generate playbook for the new contact
-      await generatePlaybookForContact(userId, contact.id);
+      // Generate playbook actions only if usePlaybook is true
+      if (contact.usePlaybook) {
+        await generatePlaybookForContact(userId, contact.id);
+      }
 
       // Award XP for adding a new contact
       await awardXP(userId, 10, 0, "contact_added", { contactId: contact.id });
