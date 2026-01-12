@@ -64,11 +64,11 @@
 ### Functional Issues
 
 #### Contact Card - Long Action Labels Push Button Out of Card
-- **Status**: ✔️ Completed
-- **Completed**: 2026-01-12
+- **Status**: 🆕 New
+- **Reported**: 2026-01-11 conversation
 - **Description**: When playbook action labels are long, they overflow and push the complete button outside the card boundaries
 - **Source**: User feedback during outcomes testing
-- **Notes**: This is a known CSS issue but deferred - playbook is now optional so less impact
+- **Notes**: CSS layout issue - needs text truncation or responsive design fix
 
 #### Contact Card - Becomes Weird When Browser Window Smaller
 - **Status**: 🆕 New
@@ -78,11 +78,11 @@
 - **Notes**: Responsive design needs work - test at tablet/mobile breakpoints
 
 #### Log Button on Contacts Page - Not Responsive
-- **Status**: 🔍 Under Review
+- **Status**: 🆕 New
 - **Reported**: 2026-01-11 conversation
 - **Description**: "Log interaction" button on the contacts list page doesn't respond to clicks
 - **Source**: User feedback during outcomes testing
-- **Notes**: InteractionFormModal exists and is wired up, but button may have event propagation issues. Added preventDefault/stopPropagation handlers.
+- **Notes**: Event handler may not be wired up correctly
 
 #### Follow-ups Page - Shows Nothing
 - **Status**: 🆕 New
@@ -101,35 +101,11 @@
 ### Data Issues
 
 #### "How Did You Meet" vs "Source" - Same Content
-- **Status**: ✔️ Completed
-- **Completed**: 2026-01-12
+- **Status**: 🔍 Under Review
+- **Reported**: 2026-01-11 conversation
 - **Description**: The "How did you meet" field and "Source" field appear to show the same data
 - **Source**: User feedback during outcomes testing
-- **Fix**: Renamed to "How You Met" and expanded options to include existing relationships
-
----
-
-## Recently Completed ✅
-
-### Flexible Playbook System (2026-01-12)
-- Added "Use playbook?" checkbox to contact creation
-- Playbook generation now conditional based on contact preference
-- Supports both structured outreach (cold) and freestyle tracking (warm/hot)
-
-### Standalone Interaction Logging (2026-01-12)
-- Fixed "Log" button on contacts page
-- Created InteractionFormModal for quick logging from list view
-- No longer requires playbook to log interactions
-
-### Expanded Source Options (2026-01-12)
-- Added "Existing Friend/Family", "Former Colleague", and other relationship types
-- Renamed field from "Source" to "How You Met" for clarity
-- Consistent options across contact form and outcomes form
-
-### Introduction Tracking (2026-01-12)
-- Contact linking for "Introduction Made" outcomes
-- Shows "→ Introduced to [Name]" on contact detail page
-- Clickable links to navigate introduction chains
+- **Notes**: Need to review outcomes brainstorming notes to understand original intent for these fields
 
 ---
 
@@ -355,8 +331,8 @@
 - [ ] Create implementation plans for P0/P1 items
 - [ ] Commit BACKLOG.md updates
 
-**Last Updated**: 2026-01-12
-**Last Review**: 2026-01-12 (after flexible playbook implementation)
+**Last Updated**: 2026-01-11
+**Last Review**: Never (just created)
 **Next Review**: After implementing next major feature (AI Assistant or Email Integration)
 
 ---

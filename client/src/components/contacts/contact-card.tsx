@@ -125,13 +125,14 @@ export function ContactCard({
           </DropdownMenu>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
-          <Badge variant="outline" className="text-xs font-normal">
-            <Clock className="w-3 h-3 mr-1" />
-            {suggestedAction}
+        <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-normal flex-1 min-w-0">
+            <Clock className="w-3 h-3 mr-1 shrink-0" />
+            <span className="truncate">{suggestedAction}</span>
           </Badge>
           <Button
             size="sm"
+            className="shrink-0"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

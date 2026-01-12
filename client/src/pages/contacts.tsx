@@ -227,14 +227,12 @@ export default function ContactsPage() {
       </Dialog>
 
       {/* Interaction Form Modal */}
-      {logInteractionContact && (
-        <InteractionFormModal
-          contactId={logInteractionContact.id}
-          contactName={logInteractionContact.name}
-          isOpen={!!logInteractionContact}
-          onClose={() => setLogInteractionContact(null)}
-        />
-      )}
+      <InteractionFormModal
+        contactId={logInteractionContact?.id || ""}
+        contactName={logInteractionContact?.name || ""}
+        isOpen={!!logInteractionContact}
+        onClose={() => setLogInteractionContact(null)}
+      />
     </div>
   );
 }
