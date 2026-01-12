@@ -66,8 +66,8 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
   const { refreshUser } = useAuth();
-  const { showXPGain } = useXPPopup();
-  const { showBadge } = useSideQuestBadge();
+  const { showXPGain, XPPopupComponent } = useXPPopup();
+  const { showBadge, BadgeComponent } = useSideQuestBadge();
   const form = useForm<InteractionFormValues>({
     resolver: zodResolver(interactionFormSchema),
     defaultValues: {
@@ -121,8 +121,11 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+    <>
+      {XPPopupComponent}
+      {BadgeComponent}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 
         <FormField
           control={form.control}
@@ -291,5 +294,6 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
         </div>
       </form>
     </Form>
+    </>
   );
 }
