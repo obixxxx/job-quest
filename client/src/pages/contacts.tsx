@@ -19,7 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContactCard } from "@/components/contacts/contact-card";
 import { ContactForm } from "@/components/contacts/contact-form";
-import { InteractionForm } from "@/components/interactions/interaction-form";
+import { InteractionFormModal } from "@/components/interactions/interaction-form-modal";
 import { useXPPopup } from "@/components/game/xp-popup";
 import { useSideQuestBadge } from "@/components/game/side-quest-badge";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +42,7 @@ export default function ContactsPage() {
   const [warmthFilter, setWarmthFilter] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [isInteractionDialogOpen, setIsInteractionDialogOpen] = useState(false);
+  const [logInteractionContact, setLogInteractionContact] = useState<Contact | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
@@ -115,22 +115,20 @@ export default function ContactsPage() {
   };
 
   const handleLogInteraction = (contact: Contact) => {
-    setSelectedContact(contact);
-    setIsInteractionDialogOpen(true);
+    setLogInteractionContact(contact);
   };
 
   const handleInteractionSubmit = async (data: any) => {
-    if (!selectedContact) return;
+    if (!logInteractionContact) return;
     setIsPending(true);
     try {
       const response = await apiRequest("POST", "/api/interactions", {
         ...data,
-        contactId: selectedContact.id,
+        contactId: logInteractionContact.id,
       });
       const result = await response.json();
 
-      setIsInteractionDialogOpen(false);
-      setSelectedContact(null);
+      setLogInteractionContact(null);
 
       if (result.xpAwarded > 0 || result.osAwarded > 0) {
         showXPGain(result.xpAwarded, result.osAwarded);
@@ -227,7 +225,6 @@ export default function ContactsPage() {
               key={item.contact.id}
               contact={item.contact}
               lastInteraction={item.lastInteraction}
-              nextAction={item.nextAction}
               onLogInteraction={handleLogInteraction}
               onEdit={openEditDialog}
               onDelete={handleDeleteContact}
@@ -276,22 +273,16 @@ export default function ContactsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Interaction Dialog */}
-      <Dialog open={isInteractionDialogOpen} onOpenChange={setIsInteractionDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Log Interaction</DialogTitle>
-          </DialogHeader>
-          {selectedContact && (
-            <InteractionForm
-              contact={selectedContact}
-              onSubmit={handleInteractionSubmit}
-              onCancel={() => setIsInteractionDialogOpen(false)}
-              isPending={isPending}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Interaction Form Modal */}
+      {logInteractionContact && (
+        <InteractionFormModal
+          contact={logInteractionContact}
+          isOpen={!!logInteractionContact}
+          onClose={() => setLogInteractionContact(null)}
+          onSubmit={handleInteractionSubmit}
+          isPending={isPending}
+        />
+      )}
     </div>
   );
 }
