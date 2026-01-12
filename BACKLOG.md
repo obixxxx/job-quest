@@ -64,11 +64,11 @@
 ### Functional Issues
 
 #### Contact Card - Long Action Labels Push Button Out of Card
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
-- **Description**: When playbook action labels are long, they overflow and push the complete button outside the card boundaries
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-12
+- **Description**: When playbook action labels are long, they overflow and push the Log button outside the card boundaries on smaller viewports
 - **Source**: User feedback during outcomes testing
-- **Notes**: CSS layout issue - needs text truncation or responsive design fix
+- **Fix**: Added flex-1 min-w-0 to Badge, truncated action text, added shrink-0 to Button to prevent overflow
 
 #### Contact Card - Becomes Weird When Browser Window Smaller
 - **Status**: 🆕 New
