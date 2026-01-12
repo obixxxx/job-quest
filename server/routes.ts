@@ -334,7 +334,13 @@ export async function registerRoutes(
 
       // Generate playbook actions only if usePlaybook is true
       if (contact.usePlaybook) {
-        await generatePlaybookForContact(userId, contact.id);
+        try {
+          await generatePlaybookForContact(userId, contact.id);
+        } catch (playbookError) {
+          // Log the error for debugging but don't fail the request
+          console.error('Failed to generate playbook for contact:', contact.id, playbookError);
+          // Contact creation still succeeds even if playbook generation fails
+        }
       }
 
       // Award XP for adding a new contact
