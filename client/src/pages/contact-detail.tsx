@@ -55,7 +55,20 @@ interface ContactDetail {
     osAwarded: number;
   }>;
   nextAction: PlaybookAction | null;
-  outcomes?: Outcome[];
+  outcomes?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    outcomeDate: string;
+    revenueAmount: number | null;
+    revenueType: string | null;
+    introducedToContactId: string | null;
+    introducedToContact?: {
+      id: string;
+      name: string;
+      company: string | null;
+    };
+  }>;
 }
 
 export default function ContactDetailPage() {
@@ -299,6 +312,14 @@ export default function ContactDetailPage() {
                   <div>
                     <OutcomeBadge outcome={outcome} />
                     <p className="text-sm text-muted-foreground mt-1">{outcome.description}</p>
+                    {outcome.introducedToContact && (
+                      <Link href={`/contacts/${outcome.introducedToContact.id}`}>
+                        <p className="text-xs text-blue-600 hover:underline mt-1">
+                          → Introduced to {outcome.introducedToContact.name}
+                          {outcome.introducedToContact.company && ` (${outcome.introducedToContact.company})`}
+                        </p>
+                      </Link>
+                    )}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {format(new Date(outcome.outcomeDate), 'MMM d, yyyy')}

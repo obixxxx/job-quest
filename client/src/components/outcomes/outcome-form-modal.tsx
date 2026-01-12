@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { InsertOutcome } from '@shared/schema';
@@ -39,9 +53,22 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
   const [revenueAmount, setRevenueAmount] = useState('');
   const [revenueType, setRevenueType] = useState('one_time');
   const [sourceType, setSourceType] = useState('');
+  const [introducedToContactId, setIntroducedToContactId] = useState<string>('');
+  const [contactSearchOpen, setContactSearchOpen] = useState(false);
+
+  const { data: contactsData } = useQuery({
+    queryKey: ['/api/contacts'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/contacts');
+      return res.json();
+    },
+  });
+
+  const contacts = contactsData || [];
+  const selectedContact = contacts.find((c: any) => c.contact.id === introducedToContactId);
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertOutcome) =>
+    mutationFn: (data: Omit<InsertOutcome, 'userId'>) =>
       apiRequest('POST', '/api/outcomes', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes'] });
@@ -63,6 +90,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
     setRevenueAmount('');
     setRevenueType('one_time');
     setSourceType('');
+    setIntroducedToContactId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -75,13 +103,13 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
 
     createMutation.mutate({
       contactId,
-      contactName, // For referral notes
       type,
       description: description.trim(),
       outcomeDate,
       revenueAmount: revenueAmount ? parseInt(revenueAmount) : null,
       revenueType: revenueAmount ? revenueType : null,
       sourceType: sourceType || null,
+      introducedToContactId: type === 'introduction_made' ? introducedToContactId : null,
     });
   };
 
@@ -115,6 +143,58 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
               </SelectContent>
             </Select>
           </div>
+
+          {/* Show contact picker only for introduction_made type */}
+          {type === 'introduction_made' && (
+            <div className="space-y-2">
+              <Label>Who were you introduced to?</Label>
+              <Popover open={contactSearchOpen} onOpenChange={setContactSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={contactSearchOpen}
+                    className="w-full justify-between"
+                  >
+                    {selectedContact
+                      ? selectedContact.contact.name
+                      : "Select contact..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search contacts..." />
+                    <CommandEmpty>No contact found.</CommandEmpty>
+                    <CommandGroup>
+                      {contacts.map((item: any) => (
+                        <CommandItem
+                          key={item.contact.id}
+                          value={item.contact.name}
+                          onSelect={() => {
+                            setIntroducedToContactId(item.contact.id);
+                            setContactSearchOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              introducedToContactId === item.contact.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {item.contact.name}
+                          {item.contact.company && ` (${item.contact.company})`}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Select the person you were introduced to through this contact
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>How You Met (optional)</Label>

@@ -593,12 +593,54 @@ export class DatabaseStorage implements IStorage {
     return outcome;
   }
 
-  async getOutcomesByContact(contactId: string): Promise<Outcome[]> {
-    return await db
-      .select()
+  async getOutcomesByContact(contactId: string): Promise<any[]> {
+    const outcomesData = await db
+      .select({
+        id: outcomes.id,
+        userId: outcomes.userId,
+        contactId: outcomes.contactId,
+        type: outcomes.type,
+        description: outcomes.description,
+        revenueAmount: outcomes.revenueAmount,
+        revenueType: outcomes.revenueType,
+        outcomeDate: outcomes.outcomeDate,
+        sourceType: outcomes.sourceType,
+        introducedToContactId: outcomes.introducedToContactId,
+        interactionCount: outcomes.interactionCount,
+        durationDays: outcomes.durationDays,
+        createdAt: outcomes.createdAt,
+        updatedAt: outcomes.updatedAt,
+        introducedToContactId_: contacts.id,
+        introducedToContactName: contacts.name,
+        introducedToContactCompany: contacts.company,
+      })
       .from(outcomes)
+      .leftJoin(contacts, eq(outcomes.introducedToContactId, contacts.id))
       .where(eq(outcomes.contactId, contactId))
       .orderBy(desc(outcomes.outcomeDate));
+
+    // Transform the data to nest introducedToContact
+    return outcomesData.map(outcome => ({
+      id: outcome.id,
+      userId: outcome.userId,
+      contactId: outcome.contactId,
+      type: outcome.type,
+      description: outcome.description,
+      revenueAmount: outcome.revenueAmount,
+      revenueType: outcome.revenueType,
+      outcomeDate: outcome.outcomeDate,
+      sourceType: outcome.sourceType,
+      introducedToContactId: outcome.introducedToContactId,
+      interactionCount: outcome.interactionCount,
+      durationDays: outcome.durationDays,
+      createdAt: outcome.createdAt,
+      updatedAt: outcome.updatedAt,
+      introducedToContact: outcome.introducedToContactId_ ? {
+        id: outcome.introducedToContactId_,
+        name: outcome.introducedToContactName!,
+        company: outcome.introducedToContactCompany,
+      } : null,
+    }));
   }
 
   async getAllOutcomes(userId: string): Promise<any[]> {
