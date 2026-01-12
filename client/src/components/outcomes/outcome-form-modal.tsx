@@ -126,11 +126,10 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
                 <SelectItem value="existing_friend">Existing Friend/Family</SelectItem>
                 <SelectItem value="former_colleague">Former Colleague</SelectItem>
                 <SelectItem value="referral">Referral/Introduction</SelectItem>
+                <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
                 <SelectItem value="linkedin">LinkedIn</SelectItem>
                 <SelectItem value="event">Event/Conference</SelectItem>
                 <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
-                <SelectItem value="text">Text/Phone</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>

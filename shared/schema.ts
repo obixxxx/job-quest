@@ -55,7 +55,7 @@ export const contacts = pgTable("contacts", {
   linkedinUrl: text("linkedin_url"),
   phoneNumber: text("phone_number"),
   
-  source: text("source"), // "LinkedIn", "Referral", "Event", etc.
+  source: text("source"), // "existing_friend", "former_colleague", "referral", "mutual_connection", "linkedin", "event", "cold_outreach", "other"
   warmthLevel: text("warmth_level").default("cold").notNull(), // "cold", "warm", "hot"
   tags: text("tags").array().default(sql`'{}'::text[]`),
   notes: text("notes"),
@@ -286,7 +286,7 @@ export const outcomes = pgTable("outcomes", {
 
   // When & how
   outcomeDate: date("outcome_date").notNull(),
-  sourceType: text("source_type"), // "cold_outreach", "warm_intro", "referral", "event", "linkedin", "mutual_connection", "text"
+  sourceType: text("source_type"), // Optional - "existing_friend", "former_colleague", "referral", "mutual_connection", "linkedin", "event", "cold_outreach", "other"
 
   // For introductions: who were you introduced to?
   introducedToContactId: varchar("introduced_to_contact_id", { length: 36 }).references(() => contacts.id),
