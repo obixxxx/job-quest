@@ -59,7 +59,8 @@ export const contacts = pgTable("contacts", {
   warmthLevel: text("warmth_level").default("cold").notNull(), // "cold", "warm", "hot"
   tags: text("tags").array().default(sql`'{}'::text[]`),
   notes: text("notes"),
-  
+  usePlaybook: boolean("use_playbook").default(true).notNull(),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
