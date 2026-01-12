@@ -132,7 +132,11 @@ export function ContactCard({
           </Badge>
           <Button
             size="sm"
-            onClick={() => onLogInteraction(contact)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onLogInteraction(contact);
+            }}
             data-testid={`button-log-interaction-${contact.id}`}
           >
             <MessageSquare className="w-3 h-3 mr-1" />

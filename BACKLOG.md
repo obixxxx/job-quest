@@ -78,11 +78,11 @@
 - **Notes**: Responsive design needs work - test at tablet/mobile breakpoints
 
 #### Log Button on Contacts Page - Not Responsive
-- **Status**: ✔️ Completed
-- **Completed**: 2026-01-12
+- **Status**: 🔍 Under Review
+- **Reported**: 2026-01-11 conversation
 - **Description**: "Log interaction" button on the contacts list page doesn't respond to clicks
 - **Source**: User feedback during outcomes testing
-- **Fix**: Created InteractionFormModal and wired up onClick handler
+- **Notes**: InteractionFormModal exists and is wired up, but button may have event propagation issues. Added preventDefault/stopPropagation handlers.
 
 #### Follow-ups Page - Shows Nothing
 - **Status**: 🆕 New
