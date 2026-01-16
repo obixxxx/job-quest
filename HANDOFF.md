@@ -624,6 +624,48 @@ npm run build && npm run start
 
 ## Recent Features
 
+### Flexible Playbook System (✅ Implemented - Jan 2026)
+
+**What**: Made playbooks optional for contacts, enabling both structured cold outreach and freestyle relationship tracking.
+
+**Key Changes**:
+- **Database**: Added `usePlaybook` boolean field to contacts table (defaults to true)
+- **UI**: Added "Use playbook?" checkbox to contact creation form
+- **Backend**: Conditionally generates 7-step playbook only when `usePlaybook = true`
+- **Interaction Logging**: Fixed standalone "Log" button on contacts page to work without playbook
+
+**Why This Matters**:
+- Users can now track existing friends/family without forcing them through cold outreach playbook
+- Supports warm networking (former colleagues, mutual connections) vs. cold outreach
+- Users can log freestyle interactions from contacts list without going through playbook flow
+
+**Implementation Details**:
+- **Files Modified**:
+  - `shared/schema.ts` (added usePlaybook field)
+  - `client/src/components/contacts/contact-form.tsx` (checkbox UI)
+  - `server/routes.ts` (conditional playbook generation)
+  - `client/src/pages/contacts.tsx` (fixed Log button)
+  - `client/src/components/interactions/interaction-form-modal.tsx` (new modal component)
+  - `client/src/components/interactions/interaction-form.tsx` (self-contained form)
+
+**Source Options Expanded**:
+- Added: "Existing Friend/Family", "Former Colleague", "Mutual Connection", "Cold Outreach"
+- Updated both contact form and outcome form for consistency
+- Ordered from warmest to coldest relationships
+
+**Introduction Tracking**:
+- When recording "Introduction Made" outcome, users can link to the introduced contact
+- Shows "→ Introduced to [Name]" on contact detail page
+- Creates clickable introduction chains to visualize referral networks
+- Backend uses leftJoin to fetch introduced contact details
+
+**Status**: ✅ Completed (Tasks 1-6 of implementation plan)
+**Remaining**: Manual testing checklist, documentation updates, end-to-end testing
+
+**Plan Document**: `docs/plans/2026-01-11-flexible-playbook-and-interaction-logging.md`
+
+---
+
 ### Outcomes Tracking (✅ Implemented)
 
 **What**: Track major relationship milestones (interviews, job offers, client projects, introductions, referrals, dead ends) with revenue tracking and analytics.
@@ -658,6 +700,56 @@ npm run build && npm run start
 ---
 
 ## Next Steps
+
+### 🎯 WHERE WE LEFT OFF (January 16, 2026)
+
+**Last Session Summary**:
+We just completed implementing the **Flexible Playbook & Interaction Logging** feature (Tasks 1-6 of 9 from the plan). This major feature makes playbooks optional and enables freestyle relationship tracking.
+
+**What Was Completed**:
+- ✅ Task 1: Added `usePlaybook` boolean field to contacts schema
+- ✅ Task 2: Added "Use playbook?" checkbox to contact creation form
+- ✅ Task 3: Made playbook generation conditional based on usePlaybook field
+- ✅ Task 4: Fixed "Log" button on contacts page to work without playbook (created InteractionFormModal)
+- ✅ Task 5: Expanded source options (Existing Friend/Family, Former Colleague, Mutual Connection, etc.)
+- ✅ Task 6: Added introduction tracking (link contacts when recording "Introduction Made" outcomes)
+
+**What's Committed But NOT Pushed**:
+- 16 commits on branch `feature/your-work` (ahead of origin/main)
+- All code changes are committed and ready to push
+- Documentation updated in HANDOFF.md and BACKLOG.md
+
+**What Still Needs to Be Done**:
+1. ⏳ **Task 7**: Manual testing checklist (see plan lines 751-787)
+   - Test playbook toggle (create contacts with/without playbook)
+   - Test freestyle interaction logging (Log button on contacts page)
+   - Test new source options (Existing Friend/Family, etc.)
+   - Test introduction tracking (link contacts in outcomes)
+
+2. ⏳ **Task 8**: Update documentation (see plan lines 790-848)
+   - Mark backlog items as completed
+   - Update ARCHITECTURE.md with new fields/components
+
+3. ⏳ **Task 9**: End-to-end user flow testing (see plan lines 852-906)
+   - Test cold contact with playbook flow
+   - Test warm contact without playbook flow
+   - Test introduction chain creation
+   - Test existing friend tracking
+
+**Next Developer Actions**:
+1. **Push changes to GitHub**: `git push origin feature/your-work` (or merge to main)
+2. **Run database migration on production**: `npm run db:push` (via Render shell)
+3. **Complete manual testing** (Tasks 7-9 from plan)
+4. **Consider next feature**: AI Assistant (has existing plan) or fix critical gaps (session store, email sending)
+
+**Key Files to Review Before Testing**:
+- Implementation Plan: `docs/plans/2026-01-11-flexible-playbook-and-interaction-logging.md`
+- Backlog: `BACKLOG.md` (tracks bugs/features)
+- Contact Form: `client/src/components/contacts/contact-form.tsx` (has checkbox)
+- Contacts Page: `client/src/pages/contacts.tsx` (has Log button)
+- Outcome Form: `client/src/components/outcomes/outcome-form-modal.tsx` (has contact picker)
+
+---
 
 ### Immediate Priorities (Critical Gaps)
 
