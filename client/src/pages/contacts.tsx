@@ -178,6 +178,8 @@ export default function ContactsPage() {
               key={item.contact.id}
               contact={item.contact}
               lastInteraction={item.lastInteraction}
+              nextAction={item.nextAction}
+              introducedBy={item.introducedBy}
               onLogInteraction={handleLogInteraction}
               onEdit={openEditDialog}
               onDelete={handleDeleteContact}
@@ -227,14 +229,12 @@ export default function ContactsPage() {
       </Dialog>
 
       {/* Interaction Form Modal */}
-      {logInteractionContact && (
-        <InteractionFormModal
-          contactId={logInteractionContact.id}
-          contactName={logInteractionContact.name}
-          isOpen={!!logInteractionContact}
-          onClose={() => setLogInteractionContact(null)}
-        />
-      )}
+      <InteractionFormModal
+        contactId={logInteractionContact?.id || ""}
+        contactName={logInteractionContact?.name || ""}
+        isOpen={!!logInteractionContact}
+        onClose={() => setLogInteractionContact(null)}
+      />
     </div>
   );
 }

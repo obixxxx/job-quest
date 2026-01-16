@@ -277,10 +277,12 @@ export function PlaybookPanel({
             </div>
           )}
           <InteractionForm
-            contact={{ id: contactId, name: contactName, email: contactEmail, company: contactCompany }}
-            onSubmit={handleInteractionSubmit}
-            onCancel={() => setIsInteractionDialogOpen(false)}
-            isPending={isSubmitting}
+            contactId={contactId}
+            onSuccess={() => {
+              setIsInteractionDialogOpen(false);
+              setActionToComplete(null);
+            }}
+            onSubmitOverride={handleInteractionSubmit}
           />
         </DialogContent>
       </Dialog>

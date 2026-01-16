@@ -52,7 +52,6 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
   const [outcomeDate, setOutcomeDate] = useState(new Date().toISOString().split('T')[0]);
   const [revenueAmount, setRevenueAmount] = useState('');
   const [revenueType, setRevenueType] = useState('one_time');
-  const [sourceType, setSourceType] = useState('');
   const [introducedToContactId, setIntroducedToContactId] = useState<string>('');
   const [contactSearchOpen, setContactSearchOpen] = useState(false);
 
@@ -73,7 +72,8 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes'] });
       queryClient.invalidateQueries({ queryKey: ['/api/outcomes/analytics'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts/${contactId}/detail`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts', contactId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
       toast({ title: 'Outcome recorded successfully' });
       onClose();
       resetForm();
@@ -89,12 +89,20 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
     setOutcomeDate(new Date().toISOString().split('T')[0]);
     setRevenueAmount('');
     setRevenueType('one_time');
-    setSourceType('');
     setIntroducedToContactId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (type === 'introduction_made' && !introducedToContactId) {
+      toast({
+        title: 'Contact required',
+        description: 'Please select who you were introduced to',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     if (!description.trim()) {
       toast({ title: 'Description is required', variant: 'destructive' });
@@ -108,7 +116,7 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
       outcomeDate,
       revenueAmount: revenueAmount ? parseInt(revenueAmount) : null,
       revenueType: revenueAmount ? revenueType : null,
-      sourceType: sourceType || null,
+      sourceType: null,
       introducedToContactId: type === 'introduction_made' ? introducedToContactId : null,
     });
   };
@@ -197,25 +205,6 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
           )}
 
           <div className="space-y-2">
-            <Label>How You Met (optional)</Label>
-            <Select value={sourceType} onValueChange={setSourceType}>
-              <SelectTrigger>
-                <SelectValue placeholder="How did you meet?" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="existing_friend">Existing Friend/Family</SelectItem>
-                <SelectItem value="former_colleague">Former Colleague</SelectItem>
-                <SelectItem value="referral">Referral/Introduction</SelectItem>
-                <SelectItem value="mutual_connection">Mutual Connection</SelectItem>
-                <SelectItem value="linkedin">LinkedIn</SelectItem>
-                <SelectItem value="event">Event/Conference</SelectItem>
-                <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
@@ -249,22 +238,20 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
                 />
               </div>
 
-              {revenueAmount && (
-                <div className="space-y-2">
-                  <Label>Revenue Type</Label>
-                  <Select value={revenueType} onValueChange={setRevenueType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="salary">Salary (annual)</SelectItem>
-                      <SelectItem value="one_time">One-time project</SelectItem>
-                      <SelectItem value="monthly_recurring">Monthly recurring</SelectItem>
-                      <SelectItem value="yearly_recurring">Yearly recurring</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Revenue Type</Label>
+                <Select value={revenueType} onValueChange={setRevenueType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="salary">Salary (annual)</SelectItem>
+                    <SelectItem value="one_time">One-time project</SelectItem>
+                    <SelectItem value="monthly_recurring">Monthly recurring</SelectItem>
+                    <SelectItem value="yearly_recurring">Yearly recurring</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </>
           )}
 

@@ -315,7 +315,10 @@ export async function registerRoutes(
           const playbookActions = await storage.getPlaybookActions(userId, contact.id);
           const nextAction = playbookActions.find(a => a.status === 'pending');
 
-          return { contact, lastInteraction, nextAction };
+          // Get introducer for this contact
+          const introducedBy = await storage.getIntroducerForContact(contact.id);
+
+          return { contact, lastInteraction, nextAction, introducedBy };
         })
       );
 
@@ -749,6 +752,7 @@ export async function registerRoutes(
       const playbookActions = await storage.getPlaybookActions(userId, req.params.id);
       const interactions = await storage.getInteractions(userId, req.params.id);
       const outcomes = await storage.getOutcomesByContact(req.params.id);
+      const introducedBy = await storage.getIntroducedByOutcomes(req.params.id);
 
       // Fetch templates for playbook actions
       const actionsWithTemplates = await Promise.all(
@@ -769,6 +773,7 @@ export async function registerRoutes(
         playbookActions: actionsWithTemplates,
         interactions,
         outcomes,
+        introducedBy,
         nextAction,
       });
     } catch (error) {

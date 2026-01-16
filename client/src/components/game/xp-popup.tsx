@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Confetti } from "./confetti";
 
 interface XPPopupProps {
   xp: number;
@@ -8,32 +9,77 @@ interface XPPopupProps {
 
 export function XPPopup({ xp, os = 0, onComplete }: XPPopupProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
+    // Trigger confetti immediately
+    setShowConfetti(true);
+
     const timer = setTimeout(() => {
       setIsVisible(false);
       onComplete?.();
-    }, 1500);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-50">
-      <div className="animate-float-up flex flex-col items-center gap-1">
-        {xp > 0 && (
-          <span className="font-mono text-4xl font-bold text-game-xp drop-shadow-lg">
-            +{xp} XP
-          </span>
-        )}
-        {os > 0 && (
-          <span className="font-mono text-2xl font-bold text-game-os drop-shadow-lg">
-            +{os} OS
-          </span>
-        )}
+    <>
+      {/* Confetti effect */}
+      {showConfetti && <Confetti onComplete={() => setShowConfetti(false)} />}
+
+      {/* Full-screen success overlay with gradient */}
+      <div className="fixed inset-0 pointer-events-none z-50">
+        {/* Green gradient background overlay - Duolingo-style */}
+        <div className="absolute inset-0 bg-gradient-to-b from-game-xp/20 via-game-xp/10 to-transparent animate-float-up" />
+
+        {/* Center content with bounce animation */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="animate-bounce-in">
+            {/* Card with glow effect */}
+            <div className="relative">
+              {/* Glow effect behind card */}
+              <div className="absolute inset-0 bg-game-xp/30 blur-3xl rounded-full scale-150" />
+
+              {/* Main card */}
+              <div className="relative bg-gradient-to-br from-game-xp via-game-xp-light to-game-xp rounded-3xl px-12 py-8 shadow-2xl border-4 border-game-xp-light/50">
+                <div className="flex flex-col items-center gap-3">
+                  {xp > 0 && (
+                    <div className="flex flex-col items-center">
+                      <div className="text-white/90 text-xl font-semibold mb-1 tracking-wide">
+                        XP GAINED!
+                      </div>
+                      <div className="font-mono text-7xl font-black text-white drop-shadow-2xl tracking-tight">
+                        +{xp}
+                      </div>
+                      <div className="text-white/80 text-2xl font-bold tracking-wider mt-1">
+                        XP
+                      </div>
+                    </div>
+                  )}
+                  {os > 0 && (
+                    <div className="flex flex-col items-center mt-2 pt-4 border-t-2 border-white/30">
+                      <div className="text-white/90 text-lg font-semibold mb-1">
+                        BONUS OUTCOME STRENGTH
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-5xl font-black text-game-os drop-shadow-2xl">
+                          +{os}
+                        </span>
+                        <span className="text-white/80 text-xl font-bold">
+                          OS
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

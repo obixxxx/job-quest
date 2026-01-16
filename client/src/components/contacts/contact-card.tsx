@@ -18,6 +18,7 @@ interface ContactCardProps {
   contact: Contact;
   lastInteraction?: Interaction | null;
   nextAction?: PlaybookAction | null;
+  introducedBy?: { id: string; name: string; company: string | null } | null;
   onLogInteraction: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
@@ -46,10 +47,28 @@ function getAvatarColor(name: string): string {
   return colors[index];
 }
 
+function formatSource(source: string | null): string {
+  if (!source) return "";
+
+  const sourceMap: Record<string, string> = {
+    existing_friend: "Friend/Family",
+    former_colleague: "Former Colleague",
+    referral: "Referral",
+    mutual_connection: "Mutual Connection",
+    linkedin: "LinkedIn",
+    event: "Event",
+    cold_outreach: "Cold Outreach",
+    other: "Other",
+  };
+
+  return sourceMap[source] || source;
+}
+
 export function ContactCard({
   contact,
   lastInteraction,
   nextAction,
+  introducedBy,
   onLogInteraction,
   onEdit,
   onDelete,
@@ -83,11 +102,18 @@ export function ContactCard({
               </p>
             )}
 
-            {lastInteraction && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Last contact: {formatDistanceToNow(new Date(lastInteraction.createdAt), { addSuffix: true })}
-              </p>
-            )}
+            <div className="flex items-center gap-3 mt-1">
+              {introducedBy && (
+                <p className="text-xs text-muted-foreground">
+                  via {introducedBy.name}
+                </p>
+              )}
+              {lastInteraction && (
+                <p className="text-xs text-muted-foreground">
+                  Last contact: {formatDistanceToNow(new Date(lastInteraction.createdAt), { addSuffix: true })}
+                </p>
+              )}
+            </div>
 
             {contact.tags && contact.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -125,14 +151,19 @@ export function ContactCard({
           </DropdownMenu>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
-          <Badge variant="outline" className="text-xs font-normal">
-            <Clock className="w-3 h-3 mr-1" />
-            {suggestedAction}
+        <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-normal flex-1 min-w-0">
+            <Clock className="w-3 h-3 mr-1 shrink-0" />
+            <span className="truncate">{suggestedAction}</span>
           </Badge>
           <Button
             size="sm"
-            onClick={() => onLogInteraction(contact)}
+            className="shrink-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onLogInteraction(contact);
+            }}
             data-testid={`button-log-interaction-${contact.id}`}
           >
             <MessageSquare className="w-3 h-3 mr-1" />
