@@ -79,10 +79,11 @@ export const interactions = pgTable("interactions", {
   contactId: varchar("contact_id", { length: 36 }).notNull().references(() => contacts.id, { onDelete: "cascade" }),
 
   type: text("type").notNull(), // "email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"
-  direction: text("direction").default("outbound").notNull(), // "outbound", "inbound"
+  direction: text("direction").default("outbound"), // "outbound", "inbound", "mutual" (nullable for mutual interactions)
   status: text("status").default("completed").notNull(), // "scheduled", "completed", "cancelled"
+  interactionDate: timestamp("interaction_date").defaultNow().notNull(), // When the interaction occurred
   messageContent: text("message_content"),
-  
+
   outcome: text("outcome"), // "response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"
   outcomeDetails: text("outcome_details"),
   
@@ -326,6 +327,11 @@ export const insertContactSchema = createInsertSchema(contacts).omit({
 export const insertInteractionSchema = createInsertSchema(interactions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  direction: z.string().optional(),
+  messageContent: z.string().optional(),
+  outcome: z.string().optional(),
+  outcomeDetails: z.string().optional(),
 });
 
 export const insertOpportunitySchema = createInsertSchema(opportunities).omit({

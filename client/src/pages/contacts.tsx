@@ -178,6 +178,8 @@ export default function ContactsPage() {
               key={item.contact.id}
               contact={item.contact}
               lastInteraction={item.lastInteraction}
+              nextAction={item.nextAction}
+              introducedBy={item.introducedBy}
               onLogInteraction={handleLogInteraction}
               onEdit={openEditDialog}
               onDelete={handleDeleteContact}

@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -48,8 +49,9 @@ const outcomes = [
 
 const interactionFormSchema = z.object({
   type: z.enum(["email", "linkedin_dm", "call", "coffee", "text", "comment", "physical_letter"]),
-  direction: z.enum(["outbound", "inbound"]),
+  direction: z.enum(["outbound", "inbound", "mutual"]).optional(),
   status: z.enum(["completed", "scheduled", "cancelled"]),
+  interactionDate: z.string(),
   outcome: z.enum(["response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"]).optional(),
   outcomeDetails: z.string().optional(),
   messageContent: z.string().optional(),
@@ -60,9 +62,10 @@ type InteractionFormValues = z.infer<typeof interactionFormSchema>;
 interface InteractionFormProps {
   contactId: string;
   onSuccess: () => void;
+  onSubmitOverride?: (data: InteractionFormValues) => Promise<void>;
 }
 
-export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) {
+export function InteractionForm({ contactId, onSuccess, onSubmitOverride }: InteractionFormProps) {
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
   const { refreshUser } = useAuth();
@@ -73,6 +76,7 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
     defaultValues: {
       type: "email",
       direction: "outbound",
+      interactionDate: new Date().toISOString().split('T')[0],
       outcome: undefined,
       outcomeDetails: "",
       messageContent: "",
@@ -84,6 +88,16 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
   const outcomeData = outcomes.find((o) => o.value === selectedOutcome);
 
   const handleSubmit = async (data: InteractionFormValues) => {
+    if (onSubmitOverride) {
+      setIsPending(true);
+      try {
+        await onSubmitOverride(data);
+      } finally {
+        setIsPending(false);
+      }
+      return;
+    }
+
     setIsPending(true);
     try {
       const response = await apiRequest("POST", "/api/interactions", {
@@ -175,8 +189,27 @@ export function InteractionForm({ contactId, onSuccess }: InteractionFormProps) 
                 <SelectContent>
                   <SelectItem value="outbound">I reached out to them</SelectItem>
                   <SelectItem value="inbound">They reached out to me</SelectItem>
+                  <SelectItem value="mutual">Mutual (coffee chat, call, etc.)</SelectItem>
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="interactionDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Interaction Date</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  {...field}
+                  data-testid="input-interaction-date"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

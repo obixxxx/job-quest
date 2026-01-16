@@ -1,16 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Building, Mail, Phone, Linkedin, Calendar, Zap, Trophy } from "lucide-react";
+import { ArrowLeft, Building, Mail, Phone, Linkedin, Calendar, Zap, Trophy, Edit, MessageSquare, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PlaybookPanel } from "@/components/playbook/playbook-panel";
 import { TemplateModal } from "@/components/playbook/template-modal";
 import { OutcomeFormModal } from "@/components/outcomes/outcome-form-modal";
 import { OutcomeBadge } from "@/components/outcomes/outcome-badge";
+import { ContactForm } from "@/components/contacts/contact-form";
+import { InteractionForm } from "@/components/interactions/interaction-form";
 import { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Outcome } from "@shared/schema";
 
 interface Template {
@@ -40,6 +56,7 @@ interface ContactDetail {
     email: string | null;
     linkedinUrl: string | null;
     phoneNumber: string | null;
+    source: string | null;
     warmthLevel: string;
     createdAt: string;
   };
@@ -69,12 +86,44 @@ interface ContactDetail {
       company: string | null;
     };
   }>;
+  introducedBy?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    outcomeDate: string;
+    introducerContact: {
+      id: string;
+      name: string;
+      company: string | null;
+    };
+  }>;
+}
+
+function formatSource(source: string | null): string {
+  if (!source) return "";
+
+  const sourceMap: Record<string, string> = {
+    existing_friend: "Friend/Family",
+    former_colleague: "Former Colleague",
+    referral: "Referral",
+    mutual_connection: "Mutual Connection",
+    linkedin: "LinkedIn",
+    event: "Event",
+    cold_outreach: "Cold Outreach",
+    other: "Other",
+  };
+
+  return sourceMap[source] || source;
 }
 
 export default function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isInteractionDialogOpen, setIsInteractionDialogOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   const { data, isLoading } = useQuery<ContactDetail>({
     queryKey: ["/api/contacts", id, "detail"],
@@ -85,6 +134,26 @@ export default function ContactDetailPage() {
     },
     enabled: !!id,
   });
+
+  const handleEditContact = async (formData: any) => {
+    if (!id) return;
+    setIsPending(true);
+    try {
+      await apiRequest("PATCH", `/api/contacts/${id}`, formData);
+      setIsEditDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts", id, "detail"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({ title: "Contact updated!" });
+    } catch (error) {
+      toast({
+        title: "Failed to update contact",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,7 +173,7 @@ export default function ContactDetailPage() {
     );
   }
 
-  const { contact, playbookActions, interactions, nextAction, outcomes = [] } = data;
+  const { contact, playbookActions, interactions, nextAction, outcomes = [], introducedBy = [] } = data;
 
   const warmthColors = {
     cold: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -148,6 +217,11 @@ export default function ContactDetailPage() {
                     )}
                   </p>
                 )}
+                {contact.source && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Met via {formatSource(contact.source)}
+                  </p>
+                )}
                 <div className="flex items-center gap-3 mt-2">
                   <Badge className={warmthColors[contact.warmthLevel as keyof typeof warmthColors]}>
                     {contact.warmthLevel}
@@ -162,10 +236,27 @@ export default function ContactDetailPage() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button onClick={() => setIsInteractionDialogOpen(true)} data-testid="button-log-interaction">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Log Interaction
+              </Button>
               <Button onClick={() => setIsOutcomeModalOpen(true)} variant="outline">
                 <Trophy className="h-4 w-4 mr-2" />
                 Record Outcome
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="More options">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)} data-testid="button-edit-contact">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Contact
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {contact.email && (
                 <Button size="icon" variant="outline" asChild data-testid="button-email-contact">
                   <a href={`mailto:${contact.email}`} aria-label="Send email">
@@ -296,6 +387,38 @@ export default function ContactDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Introduced By Section */}
+      {introducedBy && introducedBy.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Introduced By</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {introducedBy.map((intro) => (
+                <div
+                  key={intro.id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-md"
+                >
+                  <div>
+                    <Link href={`/contacts/${intro.introducerContact.id}`}>
+                      <p className="text-sm font-medium text-blue-600 hover:underline">
+                        ← Introduced by {intro.introducerContact.name}
+                        {intro.introducerContact.company && ` (${intro.introducerContact.company})`}
+                      </p>
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-1">{intro.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(intro.outcomeDate), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Outcomes Section */}
       {outcomes && outcomes.length > 0 && (
         <Card>
@@ -315,7 +438,7 @@ export default function ContactDetailPage() {
                     {outcome.introducedToContact && (
                       <Link href={`/contacts/${outcome.introducedToContact.id}`}>
                         <p className="text-xs text-blue-600 hover:underline mt-1">
-                          → Introduced to {outcome.introducedToContact.name}
+                          → Introduced me to {outcome.introducedToContact.name}
                           {outcome.introducedToContact.company && ` (${outcome.introducedToContact.company})`}
                         </p>
                       </Link>
@@ -346,6 +469,37 @@ export default function ContactDetailPage() {
         contactId={id!}
         contactName={contact.name}
       />
+
+      {/* Log Interaction Dialog */}
+      <Dialog open={isInteractionDialogOpen} onOpenChange={setIsInteractionDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Log Interaction with {contact.name}</DialogTitle>
+          </DialogHeader>
+          <InteractionForm
+            contactId={id!}
+            onSuccess={() => {
+              setIsInteractionDialogOpen(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/contacts", id, "detail"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+          </DialogHeader>
+          <ContactForm
+            contact={contact}
+            onSubmit={handleEditContact}
+            onCancel={() => setIsEditDialogOpen(false)}
+            isPending={isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

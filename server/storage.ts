@@ -102,6 +102,8 @@ export interface IStorage {
     introducedToContactId?: string | null;
   }): Promise<Outcome>;
   getOutcomesByContact(contactId: string): Promise<Outcome[]>;
+  getIntroducedByOutcomes(contactId: string): Promise<any[]>;
+  getIntroducerForContact(contactId: string): Promise<{ id: string; name: string; company: string | null } | null>;
   getAllOutcomes(userId: string): Promise<any[]>;
   getOutcomesAnalytics(userId: string): Promise<any>;
 }
@@ -643,6 +645,60 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getIntroducedByOutcomes(contactId: string): Promise<any[]> {
+    // Get outcomes where this contact is the introducedToContactId (backward relationship)
+    const introducedByData = await db
+      .select({
+        id: outcomes.id,
+        type: outcomes.type,
+        description: outcomes.description,
+        outcomeDate: outcomes.outcomeDate,
+        introducerContactId: contacts.id,
+        introducerContactName: contacts.name,
+        introducerContactCompany: contacts.company,
+      })
+      .from(outcomes)
+      .innerJoin(contacts, eq(outcomes.contactId, contacts.id))
+      .where(eq(outcomes.introducedToContactId, contactId))
+      .orderBy(desc(outcomes.outcomeDate));
+
+    // Transform the data to nest introducerContact
+    return introducedByData.map(intro => ({
+      id: intro.id,
+      type: intro.type,
+      description: intro.description,
+      outcomeDate: intro.outcomeDate,
+      introducerContact: {
+        id: intro.introducerContactId!,
+        name: intro.introducerContactName!,
+        company: intro.introducerContactCompany,
+      },
+    }));
+  }
+
+  async getIntroducerForContact(contactId: string): Promise<{ id: string; name: string; company: string | null } | null> {
+    // Find the outcome where this contact was introduced
+    const result = await db
+      .select({
+        introducerId: contacts.id,
+        introducerName: contacts.name,
+        introducerCompany: contacts.company,
+      })
+      .from(outcomes)
+      .innerJoin(contacts, eq(outcomes.contactId, contacts.id))
+      .where(eq(outcomes.introducedToContactId, contactId))
+      .orderBy(desc(outcomes.outcomeDate))
+      .limit(1);
+
+    if (result.length === 0) return null;
+
+    return {
+      id: result[0].introducerId!,
+      name: result[0].introducerName!,
+      company: result[0].introducerCompany,
+    };
+  }
+
   async getAllOutcomes(userId: string): Promise<any[]> {
     const result = await db
       .select({
@@ -657,7 +713,7 @@ export class DatabaseStorage implements IStorage {
       .from(outcomes)
       .leftJoin(contacts, eq(outcomes.contactId, contacts.id))
       .where(eq(outcomes.userId, userId))
-      .orderBy(desc(outcomes.outcomeDate));
+      .orderBy(desc(outcomes.createdAt));
 
     return result;
   }
