@@ -101,6 +101,15 @@ export function OutcomeFormModal({ isOpen, onClose, contactId, contactName }: Ou
       return;
     }
 
+    if (type === 'introduction_made' && !introducedToContactId) {
+      toast({
+        title: 'Contact required',
+        description: 'Please select who you were introduced to',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     createMutation.mutate({
       contactId,
       type,
