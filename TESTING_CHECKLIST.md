@@ -10,12 +10,13 @@
 
 1. **Start the dev server**:
    ```bash
-   npm run dev
+   PORT=8080 npm run dev
    ```
+   **Note**: Use port 8080 since macOS uses ports 3000 and 5000 for system services.
 
 2. **Ensure DATABASE_URL is configured** in your `.env` file
 
-3. **Open browser** to http://localhost:5000
+3. **Open browser** to http://localhost:8080
 
 4. **Log in or create test account**
 
