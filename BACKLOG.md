@@ -31,6 +31,12 @@
 
 ## Recently Completed ✅
 
+### Flexible Playbook & Interaction Logging - Fully Tested (2026-01-18)
+- **Tasks 7 & 9 Completed**: Manual testing checklist and end-to-end user flows verified
+- All core functionality working: playbook toggle, freestyle interaction logging, source options, introduction tracking
+- Fixed critical bugs: interaction date validation error, server port binding for Render deployment
+- **Status**: Production-ready, deployed to Render
+
 ### Flexible Playbook System (2026-01-16)
 - Added "Use playbook?" checkbox to contact creation
 - Playbook generation now conditional based on contact preference
@@ -88,6 +94,13 @@
 - **Description**: Daily quests widget in sidebar appears non-functional
 - **Source**: User feedback during outcomes testing
 - **Notes**: May need to check quest increment logic and UI bindings
+
+#### Duplicate XP Popups - Both Green and White Show Simultaneously
+- **Status**: 🆕 New
+- **Reported**: 2026-01-18 conversation
+- **Description**: When logging an interaction or completing a playbook action, both the large green Duolingo-style XP popup AND the small white toast notification appear at the same time
+- **Source**: User feedback after fixing interaction date bug
+- **Notes**: Should only show the enhanced green XP popup, not both. Need to disable the white toast when the enhanced popup is triggered.
 
 ### Functional Issues
 
