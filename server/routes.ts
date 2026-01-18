@@ -414,10 +414,16 @@ export async function registerRoutes(
         followUpDate.setDate(followUpDate.getDate() + 3);
         isFollowUpDue = true;
       }
-      
+
+      // Convert interactionDate string to Date object if provided
+      const interactionDate = req.body.interactionDate
+        ? new Date(req.body.interactionDate)
+        : new Date();
+
       const data = insertInteractionSchema.parse({
         ...req.body,
         userId,
+        interactionDate,
         followUpDate,
         isFollowUpDue,
       });
