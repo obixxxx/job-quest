@@ -807,11 +807,23 @@ export async function registerRoutes(
       const userId = req.userId!;
       const today = new Date().toISOString().split('T')[0];
       const quests = await storage.getSelectedQuests(userId, today);
-      
-      // Check if all quests are complete for bonus
-      const allComplete = quests.length > 0 && quests.every(q => q.isCompleted);
-      
-      res.json({ quests, allComplete, bonusXP: allComplete ? 25 : 0 });
+
+      // Calculate progress stats
+      const completedCount = quests.filter(q => q.isCompleted).length;
+      const totalCount = quests.length;
+      const allCompleted = totalCount > 0 && completedCount === totalCount;
+
+      // Check if bonus was already awarded today
+      const user = await storage.getUserById(userId);
+      const bonusAwarded = user?.lastBonusDate === today;
+
+      res.json({
+        quests,
+        completedCount,
+        totalCount,
+        allCompleted,
+        bonusAwarded
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch today's quests" });
     }
