@@ -120,7 +120,8 @@ export function InteractionForm({ contactId, onSuccess, onSubmitOverride }: Inte
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       refreshUser();
-      toast({ title: "Interaction logged!", description: `+${result.xpAwarded} XP earned` });
+
+      // Don't show toast notification - the enhanced XP popup already shows this info
 
       onSuccess();
     } catch (error) {

@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 interface SelectedQuest {
   id: string;
@@ -61,13 +62,15 @@ export function DailyQuestProgress({ compact = false }: DailyQuestProgressProps)
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2 text-sm">
-        <Target className="w-4 h-4 text-game-xp" />
-        <span className="text-muted-foreground">Daily Quests</span>
-        <Badge variant="secondary" className="ml-auto">
-          {data.completedCount}/{data.totalCount}
-        </Badge>
-      </div>
+      <Link href="/">
+        <div className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-accent cursor-pointer transition-colors">
+          <Target className="w-4 h-4 text-game-xp" />
+          <span className="text-muted-foreground">Daily Quests</span>
+          <Badge variant="secondary" className="ml-auto">
+            {data.completedCount}/{data.totalCount}
+          </Badge>
+        </div>
+      </Link>
     );
   }
 

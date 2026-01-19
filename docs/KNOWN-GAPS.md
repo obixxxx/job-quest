@@ -15,9 +15,9 @@ This document catalogs broken, partial, or incomplete behaviors in the Job Quest
 
 ### 1. Session Store Uses Memory (Sessions Lost on Restart)
 
-**Status**: 🔴 Critical
+**Status**: ✅ Completed (2026-01-18)
 
-**Problem**: Sessions are stored in Node.js process memory and are lost when the server restarts.
+**Problem**: Sessions were stored in Node.js process memory and were lost when the server restarted.
 
 **Evidence**: `server/routes.ts:85-96`
 ```typescript
@@ -42,29 +42,16 @@ app.use(
 3. Refresh the browser
 4. User is logged out
 
-**Impact**:
-- Users must re-login after every server restart
+**Impact** (before fix):
+- Users had to re-login after every server restart
 - On Render free tier, server restarts happen frequently (inactivity timeout, deploys)
 - Poor user experience for production deployment
 
-**Fix Required**:
-Install and configure `connect-pg-simple`:
-```typescript
-import connectPgSimple from 'connect-pg-simple';
-const PgSession = connectPgSimple(session);
-
-app.use(session({
-  store: new PgSession({
-    pool: pool, // Reuse existing pg pool
-    tableName: 'user_sessions'
-  }),
-  // ... rest of config
-}));
-```
-
-**Files to modify**:
-- `server/routes.ts:85-96` - Add PgStore
-- `shared/schema.ts` - Add `user_sessions` table (or let connect-pg-simple auto-create)
+**Fix Implemented**:
+✅ Configured `connect-pg-simple` with PostgreSQL session store
+- `server/routes.ts:86-105` - Uses PgSession with existing pool
+- `shared/schema.ts:6-13` - Session table schema with expire index
+- Sessions now persist across server restarts
 
 ---
 

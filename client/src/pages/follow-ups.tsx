@@ -129,7 +129,8 @@ export default function FollowUpsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/follow-ups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       refreshUser();
-      toast({ title: "Follow-up completed!", description: `+${result.xpAwarded} XP earned` });
+
+      // Don't show toast notification - the enhanced XP popup already shows this info
     } catch (error) {
       toast({
         title: "Failed to log interaction",

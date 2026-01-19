@@ -106,7 +106,7 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       refreshUser();
 
-      toast({ title: "Interaction logged!", description: `+${result.xpAwarded} XP earned` });
+      // Don't show toast notification - the enhanced XP popup already shows this info
     } catch (error) {
       toast({
         title: "Failed to log interaction",

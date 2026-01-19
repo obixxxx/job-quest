@@ -59,7 +59,21 @@
       "Bash(grep:*)",
       "Bash(git checkout:*)",
       "Bash(ls:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(mcp-client render services list:*)",
+      "Bash(env)",
+      "Bash(claude mcp list:*)",
+      "mcp__render__list_services",
+      "mcp__render__list_workspaces",
+      "mcp__render__get_service",
+      "mcp__render__list_deploys",
+      "mcp__render__get_deploy",
+      "mcp__render__list_logs",
+      "Skill(systematic-debugging)",
+      "Skill(systematic-debugging:*)",
+      "Skill(subagent-driven-development)",
+      "Skill(subagent-driven-development:*)"
     ]
   }
 }

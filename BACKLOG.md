@@ -75,32 +75,32 @@
 - **Notes**: May be a React Query cache issue or missing invalidation
 
 #### OS Points on Dashboard - Never Changes
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: OS (Outreach Score) ring/display on dashboard doesn't update when OS is earned
 - **Source**: User feedback during outcomes testing
-- **Notes**: Similar to XP tracker issue - likely cache/state problem
+- **Fix**: Verified working after interaction date bug fix
 
 #### Days Streak - Never Changes
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: Streak counter doesn't update when logging interactions on consecutive days
 - **Source**: User feedback during outcomes testing
-- **Notes**: Need to verify streak calculation logic in game-engine.ts
+- **Fix**: Verified working after interaction date bug fix
 
 #### Daily Quests Sidebar - Doesn't Do Anything
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
-- **Description**: Daily quests widget in sidebar appears non-functional
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
+- **Description**: Daily quests widget in sidebar appears non-functional - didn't navigate anywhere and just showed slash mark
 - **Source**: User feedback during outcomes testing
-- **Notes**: May need to check quest increment logic and UI bindings
+- **Fix**: Made compact daily quest widget clickable with Link wrapper to navigate to dashboard, added hover states and cursor pointer for better UX
 
 #### Duplicate XP Popups - Both Green and White Show Simultaneously
-- **Status**: 🆕 New
-- **Reported**: 2026-01-18 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: When logging an interaction or completing a playbook action, both the large green Duolingo-style XP popup AND the small white toast notification appear at the same time
 - **Source**: User feedback after fixing interaction date bug
-- **Notes**: Should only show the enhanced green XP popup, not both. Need to disable the white toast when the enhanced popup is triggered.
+- **Fix**: Removed toast notifications from interaction-form.tsx, dashboard.tsx, and follow-ups.tsx - now only the enhanced green XP popup displays
 
 ### Functional Issues
 
@@ -112,11 +112,11 @@
 - **Fix**: Added flex-1 min-w-0 to Badge, truncated action text, added shrink-0 to Button to prevent overflow
 
 #### Contact Card - Becomes Weird When Browser Window Smaller
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: Contact cards have layout issues at smaller viewport sizes
 - **Source**: User feedback during outcomes testing
-- **Notes**: Responsive design needs work - test at tablet/mobile breakpoints
+- **Fix**: Verified working - responsive design handles smaller viewports correctly
 
 #### Log Button on Contacts Page - Not Responsive
 - **Status**: ✔️ Completed
@@ -126,18 +126,18 @@
 - **Fix**: Created InteractionFormModal component and wired up onClick handler to setLogInteractionContact state
 
 #### Follow-ups Page - Shows Nothing
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: Follow-ups page loads but displays no follow-up items even when follow-ups exist
 - **Source**: User feedback during outcomes testing
-- **Notes**: API returns data but UI doesn't render it - check component logic
+- **Fix**: Verified working - page now displays follow-up items correctly
 
 #### Complete Playbook Action - "Failed to Complete Action, Cannot Read Properties"
-- **Status**: 🆕 New
-- **Reported**: 2026-01-11 conversation
+- **Status**: ✔️ Completed
+- **Completed**: 2026-01-18
 - **Description**: When marking a playbook action as complete, error: "cannot read properties of undefined"
 - **Source**: User feedback during outcomes testing
-- **Notes**: Likely trying to access a property on undefined data - needs null checking
+- **Fix**: Fixed via interaction date bug fix - playbook actions now complete successfully
 
 ### Data Issues
 
