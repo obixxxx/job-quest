@@ -73,7 +73,9 @@
       "Skill(systematic-debugging)",
       "Skill(systematic-debugging:*)",
       "Skill(subagent-driven-development)",
-      "Skill(subagent-driven-development:*)"
+      "Skill(subagent-driven-development:*)",
+      "Skill(superpowers:verification-before-completion)",
+      "Skill(superpowers:verification-before-completion:*)"
     ]
   }
 }

@@ -106,6 +106,8 @@ export function InteractionForm({ contactId, onSuccess, onSubmitOverride }: Inte
       });
       const result = await response.json();
 
+      console.log("Interaction result:", { xpAwarded: result.xpAwarded, osAwarded: result.osAwarded });
+
       if (result.xpAwarded > 0 || result.osAwarded > 0) {
         showXPGain(result.xpAwarded, result.osAwarded);
       }
