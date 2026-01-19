@@ -329,7 +329,7 @@ export const insertInteractionSchema = createInsertSchema(interactions).omit({
   createdAt: true,
 }).extend({
   direction: z.string().optional(),
-  messageContent: z.string().optional(),
+  messageContent: z.string().min(0).optional(),
   outcome: z.string().optional(),
   outcomeDetails: z.string().optional(),
 });

@@ -53,8 +53,8 @@ const interactionFormSchema = z.object({
   status: z.enum(["completed", "scheduled", "cancelled"]),
   interactionDate: z.string(),
   outcome: z.enum(["response_received", "referral_obtained", "intro_obtained", "intel_gathered", "no_response"]).optional(),
-  outcomeDetails: z.string().optional(),
-  messageContent: z.string().optional(),
+  outcomeDetails: z.string().min(0).optional(),
+  messageContent: z.string().min(0).optional(),
 });
 
 type InteractionFormValues = z.infer<typeof interactionFormSchema>;
