@@ -814,7 +814,7 @@ export async function registerRoutes(
       const allCompleted = totalCount > 0 && completedCount === totalCount;
 
       // Check if bonus was already awarded today
-      const user = await storage.getUserById(userId);
+      const user = await storage.getUser(userId);
       const bonusAwarded = user?.lastBonusDate === today;
 
       res.json({
