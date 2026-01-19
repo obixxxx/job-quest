@@ -227,7 +227,7 @@ export default function DashboardPage() {
 
       {/* Interaction Dialog */}
       <Dialog open={isInteractionDialogOpen} onOpenChange={setIsInteractionDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Log Interaction</DialogTitle>
           </DialogHeader>
